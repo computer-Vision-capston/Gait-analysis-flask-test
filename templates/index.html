@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>보행 분석 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚶 보행 분석 시스템</h1>
+            <p>Gait Analysis Pipeline with Fall Detection</p>
+        </header>
+
+        <div class="main-content">
+            <!-- 왼쪽: 비디오 및 컨트롤 -->
+            <div class="card video-section">
+                <h2>📹 실시간 카메라</h2>
+                <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Video Feed">
+                
+                <div class="controls">
+                    <button class="btn btn-start" id="btn-start" onclick="startRecording()">
+                        ⏺️ 녹화 시작
+                    </button>
+                    <button class="btn btn-stop" id="btn-stop" onclick="stopRecording()" disabled>
+                        ⏹️ 녹화 중지 & 분석
+                    </button>
+                    <button class="btn btn-reset" id="btn-reset" onclick="resetSystem()">
+                        🔄 초기화
+                    </button>
+                </div>
+
+                <div class="status idle" id="status">
+                    대기 중 - 녹화 시작 버튼을 누르세요
+                </div>
+
+                <div class="info-box">
+                    <h4>📋 사용 방법</h4>
+                    <ul>
+                        <li>1. "녹화 시작" 버튼을 눌러 영상 녹화를 시작합니다</li>
+                        <li>2. 보행하는 모습을 카메라에 담습니다 (측면 촬영 권장)</li>
+                        <li>3. "녹화 중지 & 분석" 버튼으로 분석을 시작합니다</li>
+                        <li>4. 오른쪽에서 결과를 확인합니다</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 오른쪽: 결과 표시 -->
+            <div class="card result-section">
+                <h2>📊 분석 결과</h2>
+                
+                <div id="result-waiting" class="result-content show">
+                    <p style="text-align: center; color: #6b7280; margin-top: 50px;">
+                        분석 결과가 여기에 표시됩니다
+                    </p>
+                </div>
+
+                <div id="result-processing" class="result-content">
+                    <div class="spinner"></div>
+                    <p style="text-align: center; color: #667eea; font-weight: bold;">
+                        분석 중입니다...
+                    </p>
+                </div>
+
+                <div id="result-display" class="result-content">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
