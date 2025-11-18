@@ -305,6 +305,7 @@ function updateUI(state) {
     }
 }
 
+
 function showResultSection(section) {
     document.getElementById('result-waiting').classList.remove('show');
     document.getElementById('result-processing').classList.remove('show');
