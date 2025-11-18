@@ -7,12 +7,27 @@ from datetime import datetime
 import os
 import sys
 
+
 # 프로젝트 경로 추가
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from models.fall_detector_3stage import FallDetector3Stage
 from services.predict import GaitPredictor
 import mediapipe as mp
+
+# Firebase API
+try:
+    from api.firebase_api import FirebaseAPI
+    firebase = FirebaseAPI(
+        cred_path='firebase-credentials.json',
+        bucket_name='capstone-3d5ef.firebasestorage.app'  # 실제 프로젝트 ID로 변경
+    )
+    FIREBASE_ENABLED = True
+    print("✅ Firebase 연동 활성화")
+except Exception as e:
+    firebase = None
+    FIREBASE_ENABLED = False
+    print(f"⚠️ Firebase 비활성화: {e}")
 
 app = Flask(__name__)
 
@@ -81,12 +96,18 @@ def gen_frames():
         
         # 녹화 중일 때만 키포인트와 프레임 저장
         if recording and countdown == 0:
+            # 프레임은 무조건 저장
+            frames_buffer.append(frame.copy())
+            
+            # 키포인트가 있을 때만 저장
             if results.pose_landmarks:
                 landmarks = []
                 for lm in results.pose_landmarks.landmark:
                     landmarks.append([lm.x, lm.y, lm.z, lm.visibility])
                 keypoints_buffer.append(landmarks)
-                frames_buffer.append(frame.copy())
+            else:
+                # 키포인트가 없으면 빈 데이터 추가
+                keypoints_buffer.append([[0, 0, 0, 0]] * 33)
         
         # 카운트다운 표시
         if countdown > 0:
@@ -119,6 +140,20 @@ def gen_frames():
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
+@app.route('/history')
+def history_page():
+    """이전 기록 페이지"""
+    return render_template('history.html')
+
+
+@app.route('/check_firebase', methods=['GET'])
+def check_firebase():
+    """Firebase 연결 상태 확인"""
+    return jsonify({
+        'enabled': FIREBASE_ENABLED,
+        'message': 'Firebase is active' if FIREBASE_ENABLED else 'Firebase is not configured'
+    })
+
 
 def run_pipeline():
     """파이프라인 실행 (백그라운드)"""
@@ -128,12 +163,31 @@ def run_pipeline():
     print("🔍 파이프라인 시작")
     print("="*60)
     
+    # 데이터 검증
+    if len(keypoints_buffer) == 0 or len(frames_buffer) == 0:
+        print("❌ 오류: 수집된 데이터가 없습니다!")
+        analysis_result = {
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'total_frames': 0,
+            'fall_detection': {
+                'is_fall': False,
+                'confidence': 0.0,
+                'stage': -1,
+                'reason': '수집된 데이터가 없습니다'
+            },
+            'gait_classification': {
+                'error': '수집된 데이터가 없습니다'
+            }
+        }
+        return
+    
     # 타임스탬프
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # 키포인트를 numpy 배열로 변환
     keypoints = np.array(keypoints_buffer)
     print(f"📊 수집된 프레임: {len(keypoints)}")
+    print(f"📊 수집된 영상 프레임: {len(frames_buffer)}")
     
     result = {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -218,6 +272,51 @@ def run_pipeline():
     
     # === 최종 결과 저장 ===
     analysis_result = result
+    
+    # === Firebase 업로드 ===
+    if FIREBASE_ENABLED:
+        try:
+            print("\n🔥 Firebase 업로드 시작...")
+            
+            # 결과 타입 결정
+            if result['fall_detection']['is_fall']:
+                result_type = 'fall'
+            elif result['gait_classification']:
+                result_type = 'normal' if result['gait_classification']['prediction'] == 0 else 'abnormal'
+            else:
+                result_type = 'unknown'
+            
+            # 1. 원본 영상 업로드
+            original_url = firebase.upload_video(
+                original_video_path,
+                f'videos/original/{os.path.basename(original_video_path)}'
+            )
+            print(f"  ✅ 원본 영상 업로드: {original_url}")
+            
+            # 2. 분석 영상 업로드
+            analyzed_url = firebase.upload_video(
+                result_video_path,
+                f'videos/analyzed/{os.path.basename(result_video_path)}'
+            )
+            print(f"  ✅ 분석 영상 업로드: {analyzed_url}")
+            
+            # 3. Firestore에 결과 저장
+            firebase_data = {
+                'timestamp': result['timestamp'],
+                'result_type': result_type,
+                'fall_detection': result['fall_detection'],
+                'gait_classification': result['gait_classification'],
+                'keypoints': keypoints.tolist(),  # numpy → list 변환
+                'original_video_url': original_url,
+                'analyzed_video_url': analyzed_url,
+                'total_frames': result['total_frames']
+            }
+            
+            doc_id = firebase.save_analysis_result(firebase_data)
+            print(f"  ✅ Firestore 저장 완료: {doc_id}")
+            
+        except Exception as e:
+            print(f"  ❌ Firebase 업로드 오류: {e}")
     
     print("\n" + "="*60)
     print("✅ 파이프라인 완료!")
@@ -358,6 +457,13 @@ def start_recording():
         countdown = 0
         recording = True
         
+        # 10초 녹화 후 자동 종료
+        time.sleep(10)
+        
+        if recording:  # 아직 녹화 중이면
+            recording = False
+            # 자동으로 분석 시작
+            run_pipeline()
     
     thread = threading.Thread(target=countdown_and_record)
     thread.daemon = True
@@ -382,20 +488,6 @@ def stop_recording():
     thread.start()
     
     return jsonify({'status': 'success', 'message': 'Recording stopped, analysis started'})
-
-
-@app.route('/get_recording_status', methods=['GET'])
-def get_recording_status():
-    """녹화 상태 확인 (클라이언트 동기화용)"""
-    global recording, analysis_result
-    
-    is_analyzing = (not recording) and (analysis_result is None) and (len(keypoints_buffer) > 0 or len(frames_buffer) > 0)
-    
-    return jsonify({
-        'is_recording': recording,
-        'is_analyzing': is_analyzing,
-        'has_data': len(keypoints_buffer) > 0
-    })
 
 
 @app.route('/get_result', methods=['GET'])
@@ -458,6 +550,61 @@ def reset():
     result_video_path = None
     
     return jsonify({'status': 'success', 'message': 'System reset'})
+
+
+# ============ Firebase 기록 조회 라우트 ============
+
+@app.route('/get_history', methods=['GET'])
+def get_history():
+    """이전 분석 기록 조회"""
+    if not FIREBASE_ENABLED:
+        return jsonify({'status': 'error', 'message': 'Firebase not enabled'})
+    
+    filter_type = request.args.get('type', 'all')  # all, fall, normal, abnormal
+    limit = int(request.args.get('limit', 50))
+    
+    try:
+        if filter_type == 'all':
+            records = firebase.get_all_records(limit=limit)
+        else:
+            records = firebase.get_records_by_type(filter_type, limit=limit)
+        
+        return jsonify({
+            'status': 'success',
+            'records': records,
+            'count': len(records)
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+
+@app.route('/get_record/<doc_id>', methods=['GET'])
+def get_record(doc_id):
+    """특정 기록 상세 조회"""
+    if not FIREBASE_ENABLED:
+        return jsonify({'status': 'error', 'message': 'Firebase not enabled'})
+    
+    try:
+        record = firebase.get_record_by_id(doc_id)
+        if record:
+            return jsonify({'status': 'success', 'record': record})
+        else:
+            return jsonify({'status': 'error', 'message': 'Record not found'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+
+@app.route('/delete_record/<doc_id>', methods=['DELETE'])
+def delete_record(doc_id):
+    """기록 삭제"""
+    if not FIREBASE_ENABLED:
+        return jsonify({'status': 'error', 'message': 'Firebase not enabled'})
+    
+    try:
+        firebase.delete_record(doc_id)
+        return jsonify({'status': 'success', 'message': 'Record deleted'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
 
 
 if __name__ == '__main__':
