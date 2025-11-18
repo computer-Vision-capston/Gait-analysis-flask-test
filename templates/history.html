@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>분석 기록 - 보행 분석 시스템</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📁 분석 기록</h1>
+            <p>Gait Analysis History</p>
+        </header>
+
+        <div class="history-container">
+            <!-- 상단 메뉴 -->
+            <div class="history-header">
+                <button class="btn btn-back" onclick="goBack()">
+                    ← 메인으로
+                </button>
+                
+                <div class="firebase-status" id="firebase-status">
+                    <span class="status-icon">🔄</span>
+                    <span class="status-text">연결 확인 중...</span>
+                </div>
+            </div>
+
+            <!-- 필터 버튼 -->
+            <div class="filter-section">
+                <button class="filter-btn active" onclick="filterHistory('all')">
+                    📊 전체
+                </button>
+                <button class="filter-btn" onclick="filterHistory('fall')">
+                    🔴 낙상
+                </button>
+                <button class="filter-btn" onclick="filterHistory('abnormal')">
+                    🟠 비정상
+                </button>
+                <button class="filter-btn" onclick="filterHistory('normal')">
+                    🟢 정상
+                </button>
+            </div>
+
+            <!-- 기록 리스트 -->
+            <div class="history-list" id="history-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>기록을 불러오는 중...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상세 보기 모달 -->
+        <div id="detail-modal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>📊 상세 분석 결과</h2>
+                    <span class="close" onclick="closeDetail()">&times;</span>
+                </div>
+                
+                <div class="modal-body" id="detail-content">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/history.js') }}"></script>
+</body>
+</html>
