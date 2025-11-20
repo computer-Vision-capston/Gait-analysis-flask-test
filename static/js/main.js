@@ -313,3 +313,156 @@ function showResultSection(section) {
     
     document.getElementById(`result-${section}`).classList.add('show');
 }
+
+let currentCameraSource = 'local';
+let raspberryConnected = false;
+
+// 페이지 로드 시
+window.addEventListener('DOMContentLoaded', () => {
+    // 초기 상태 설정
+    document.getElementById('camera-source').value = 'local';
+    document.getElementById('raspberry-ip-section').style.display = 'none';
+    document.getElementById('camera-status').className = 'camera-status connected';
+    document.getElementById('camera-status').textContent = '✅ 사용 중';
+    
+    updateCameraStatus();
+    setInterval(updateCameraStatus, 5000);
+});
+
+function updateCameraStatus() {
+    fetch('/camera/status')
+        .then(response => response.json())
+        .then(data => {
+            currentCameraSource = data.current_source;
+            
+            const statusSpan = document.getElementById('camera-status');
+            const select = document.getElementById('camera-source');
+            
+            // select 값 동기화
+            select.value = data.current_source;
+            
+            if (data.current_source === 'local') {
+                statusSpan.className = 'camera-status connected';
+                statusSpan.textContent = '✅ 사용 중';
+            } else if (data.current_source === 'raspberry') {
+                if (data.raspberry.available) {
+                    statusSpan.className = 'camera-status connected';
+                    statusSpan.textContent = '✅ 연결됨';
+                    raspberryConnected = true;
+                } else {
+                    statusSpan.className = 'camera-status disconnected';
+                    statusSpan.textContent = '❌ 연결 끊김';
+                    raspberryConnected = false;
+                    // 라즈베리파이 끊기면 자동으로 local로
+                    switchCamera('local');
+                }
+            }
+        })
+        .catch(error => console.error('Error checking camera status:', error));
+}
+
+function onCameraSourceChange() {
+    const select = document.getElementById('camera-source');
+    const newSource = select.value;
+    const ipSection = document.getElementById('raspberry-ip-section');
+    const statusSpan = document.getElementById('camera-status');
+    
+    if (newSource === 'raspberry') {
+        ipSection.style.display = 'flex';
+        
+        if (raspberryConnected) {
+            switchCamera('raspberry');
+        } else {
+            statusSpan.className = 'camera-status disconnected';
+            statusSpan.textContent = '⚠️ 연결 필요';
+        }
+    } else {
+        ipSection.style.display = 'none';
+        switchCamera('local');
+    }
+}
+
+function connectRaspberry() {
+    const ipInput = document.getElementById('raspberry-ip');
+    const ip = ipInput.value.trim();
+    const statusSpan = document.getElementById('camera-status');
+    const connectBtn = document.querySelector('.btn-connect');
+    
+    if (!ip) {
+        alert('IP 주소를 입력하세요');
+        return;
+    }
+    
+    statusSpan.className = 'camera-status connecting';
+    statusSpan.textContent = '⏳ 연결 중...';
+    connectBtn.disabled = true;
+    
+    fetch('/raspberry/connect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ip: ip})
+    })
+    .then(response => response.json())
+    .then(data => {
+        connectBtn.disabled = false;
+        
+        if (data.status === 'success') {
+            statusSpan.className = 'camera-status connected';
+            statusSpan.textContent = '✅ 연결 성공';
+            raspberryConnected = true;
+            switchCamera('raspberry');
+        } else {
+            statusSpan.className = 'camera-status disconnected';
+            statusSpan.textContent = '❌ 연결 실패';
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        connectBtn.disabled = false;
+        statusSpan.className = 'camera-status disconnected';
+        statusSpan.textContent = '❌ 오류';
+        alert('연결 오류: ' + error);
+    });
+}
+
+function switchCamera(source) {
+    const videoFeed = document.getElementById('video-feed');
+    const statusSpan = document.getElementById('camera-status');
+    
+    console.log('Switching to:', source);
+    
+    fetch('/camera/select', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({source: source})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            currentCameraSource = source;
+            
+            // 비디오 피드 URL 변경 (캐시 방지)
+            const timestamp = new Date().getTime();
+            if (source === 'local') {
+                videoFeed.src = '/video_feed?' + timestamp;
+                statusSpan.className = 'camera-status connected';
+                statusSpan.textContent = '✅ 사용 중';
+            } else {
+                videoFeed.src = '/raspberry/video_feed?' + timestamp;
+                statusSpan.className = 'camera-status connected';
+                statusSpan.textContent = '✅ 연결됨';
+            }
+            
+            console.log('Camera switched to:', source);
+        } else {
+            alert('카메라 전환 실패: ' + data.message);
+            // 실패 시 원래대로 복구
+            document.getElementById('camera-source').value = currentCameraSource;
+        }
+    })
+    .catch(error => {
+        console.error('Error switching camera:', error);
+        alert('카메라 전환 중 오류 발생');
+        document.getElementById('camera-source').value = currentCameraSource;
+    });
+}
