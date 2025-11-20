@@ -6,7 +6,8 @@ import time
 from datetime import datetime
 import os
 import sys
-
+import json
+from raspberry_camera import RaspberryPiCamera
 
 # 프로젝트 경로 추가
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -50,6 +51,8 @@ frames_buffer = []
 analysis_result = None
 pose_detector = None
 result_video_path = None
+raspberry_camera = None
+camera_source = 'local'
 
 # 서비스 초기화
 fall_detector = FallDetector3Stage()
@@ -292,13 +295,14 @@ def upload_to_firebase(result, keypoints, original_video_path, result_video_path
                 'result_type': result_type,
                 'fall_detection': result['fall_detection'],
                 'gait_classification': result['gait_classification'],
-                'keypoints': keypoints.tolist(),
+                'keypoints_json': json.dumps(keypoints.tolist()),  # JSON 문자열로 변환
                 'original_video_url': original_url,
                 'analyzed_video_url': analyzed_url,
                 'total_frames': result['total_frames']
             }
             
             firebase.save_analysis_result(firebase_data)
+            print("  ✅ Firestore 저장 완료!")
             
         except Exception as e:
             print(f"  ❌ Firebase 업로드 오류: {e}")
@@ -398,51 +402,93 @@ def video_feed():
 
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
-    """녹화 시작 (3초 카운트다운만)"""
+    """녹화 시작 (로컬 또는 라즈베리파이)"""
     global recording, countdown, keypoints_buffer, frames_buffer, analysis_result, result_video_path
+    global camera_source
     
-    if recording or countdown > 0:
-        return jsonify({'status': 'error', 'message': 'Already recording or counting down'})
+    if camera_source == 'raspberry':
+        # 라즈베리파이 카메라 녹화
+        if raspberry_camera and raspberry_camera.connected:
+            success, result = raspberry_camera.start_recording()
+            if success:
+                return jsonify({'status': 'success', 'message': 'Raspberry Pi recording started', 'source': 'raspberry'})
+            else:
+                return jsonify({'status': 'error', 'message': result.get('error', 'Unknown error')})
+        else:
+            return jsonify({'status': 'error', 'message': 'Raspberry Pi camera not connected'})
     
-    # 초기화
-    keypoints_buffer = []
-    frames_buffer = []
-    analysis_result = None
-    result_video_path = None
-    
-    # 3초 카운트다운만
-    def countdown_only():
-        global countdown, recording
+    else:
+        # 로컬 카메라 녹화 (기존 코드)
+        if recording or countdown > 0:
+            return jsonify({'status': 'error', 'message': 'Already recording or counting down'})
         
-        for i in range(3, 0, -1):
-            countdown = i
-            time.sleep(1)
-        countdown = 0
-        recording = True
-    
-    thread = threading.Thread(target=countdown_only)
-    thread.daemon = True
-    thread.start()
-    
-    return jsonify({'status': 'success', 'message': 'Countdown started'})
+        keypoints_buffer = []
+        frames_buffer = []
+        analysis_result = None
+        result_video_path = None
+        
+        def countdown_only():
+            global countdown, recording
+            
+            for i in range(3, 0, -1):
+                countdown = i
+                time.sleep(1)
+            countdown = 0
+            recording = True
+        
+        thread = threading.Thread(target=countdown_only)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({'status': 'success', 'message': 'Local recording started', 'source': 'local'})
+
 
 
 @app.route('/stop_recording', methods=['POST'])
 def stop_recording():
-    """녹화 중지 및 분석 시작"""
-    global recording
+    """녹화 중지 및 분석 (로컬 또는 라즈베리파이)"""
+    global recording, camera_source, frames_buffer, keypoints_buffer
     
-    if not recording:
-        return jsonify({'status': 'error', 'message': 'Not recording'})
+    if camera_source == 'raspberry':
+        # 라즈베리파이에서 프레임 받아와서 분석
+        if raspberry_camera and raspberry_camera.connected:
+            success, frames, error = raspberry_camera.stop_recording_and_get_frames()
+            
+            if not success:
+                return jsonify({'status': 'error', 'message': error or 'Failed to get frames'})
+            
+            if not frames or len(frames) == 0:
+                return jsonify({'status': 'error', 'message': 'No frames received'})
+            
+            # frames_buffer를 라즈베리파이에서 받은 프레임으로 설정
+            frames_buffer = frames
+            keypoints_buffer = []  # 비워두고 run_pipeline에서 추출
+            
+            # 백그라운드에서 분석 시작
+            thread = threading.Thread(target=run_pipeline)
+            thread.daemon = True
+            thread.start()
+            
+            return jsonify({
+                'status': 'success', 
+                'message': f'Received {len(frames)} frames from Raspberry Pi',
+                'source': 'raspberry'
+            })
+        else:
+            return jsonify({'status': 'error', 'message': 'Raspberry Pi camera not connected'})
     
-    recording = False
-    
-    thread = threading.Thread(target=run_pipeline)
-    thread.daemon = True
-    thread.start()
-    
-    return jsonify({'status': 'success', 'message': 'Recording stopped, analysis started'})
-
+    else:
+        # 로컬 카메라 녹화 중지 (기존 코드)
+        if not recording:
+            return jsonify({'status': 'error', 'message': 'Not recording'})
+        
+        recording = False
+        
+        thread = threading.Thread(target=run_pipeline)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({'status': 'success', 'message': 'Local recording stopped', 'source': 'local'})
 
 @app.route('/get_recording_status', methods=['GET'])
 def get_recording_status():
@@ -569,6 +615,114 @@ def delete_record(doc_id):
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
+
+@app.route('/raspberry/connect', methods=['POST'])
+def raspberry_connect():
+    """라즈베리파이 연결"""
+    global raspberry_camera
+    
+    data = request.get_json()
+    raspberry_ip = data.get('ip', '').strip()
+    
+    if not raspberry_ip:
+        return jsonify({'status': 'error', 'message': 'IP 주소를 입력하세요'})
+    
+    # http:// 자동 추가
+    if not raspberry_ip.startswith('http'):
+        raspberry_ip = f'http://{raspberry_ip}:8000'
+    elif ':8000' not in raspberry_ip:
+        raspberry_ip = f'{raspberry_ip}:8000'
+    
+    try:
+        raspberry_camera = RaspberryPiCamera(raspberry_ip)
+        
+        if raspberry_camera.connected:
+            return jsonify({
+                'status': 'success',
+                'message': '라즈베리파이 연결 성공',
+                'url': raspberry_ip
+            })
+        else:
+            raspberry_camera = None
+            return jsonify({
+                'status': 'error',
+                'message': '라즈베리파이 연결 실패. IP 주소와 서버 실행 상태를 확인하세요.'
+            })
+    
+    except Exception as e:
+        raspberry_camera = None
+        return jsonify({'status': 'error', 'message': f'연결 오류: {str(e)}'})
+
+
+@app.route('/camera/select', methods=['POST'])
+def select_camera():
+    """카메라 소스 선택"""
+    global camera_source
+    
+    data = request.get_json()
+    source = data.get('source', 'local')
+    
+    if source not in ['local', 'raspberry']:
+        return jsonify({'status': 'error', 'message': 'Invalid camera source'})
+    
+    if source == 'raspberry' and (raspberry_camera is None or not raspberry_camera.connected):
+        return jsonify({'status': 'error', 'message': 'Raspberry Pi camera not connected'})
+    
+    camera_source = source
+    print(f"📹 카메라 소스 변경: {source}")
+    
+    return jsonify({
+        'status': 'success',
+        'source': camera_source,
+        'message': f"Camera switched to {source}"
+    })
+
+
+@app.route('/camera/status', methods=['GET'])
+def camera_status():
+    """현재 카메라 소스 및 상태 조회"""
+    global camera_source
+    
+    status = {
+        'current_source': camera_source,
+        'local': {
+            'available': True,
+            'name': 'PC 웹캠'
+        },
+        'raspberry': {
+            'available': raspberry_camera is not None and raspberry_camera.connected,
+            'name': '라즈베리파이 카메라',
+            'url': raspberry_camera.url if raspberry_camera else None
+        }
+    }
+    
+    # 라즈베리파이 상태 확인
+    if raspberry_camera and raspberry_camera.connected:
+        success, pi_status = raspberry_camera.get_status()
+        if success:
+            status['raspberry']['recording'] = pi_status.get('recording', False)
+            status['raspberry']['frame_count'] = pi_status.get('frame_count', 0)
+    
+    return jsonify(status)
+
+
+@app.route('/raspberry/video_feed')
+def raspberry_video_feed():
+    """라즈베리파이 비디오 스트림 프록시"""
+    if raspberry_camera and raspberry_camera.connected:
+        import requests
+        
+        def generate():
+            try:
+                stream = requests.get(raspberry_camera.get_video_feed_url(), stream=True, timeout=10)
+                for chunk in stream.iter_content(chunk_size=1024):
+                    yield chunk
+            except Exception as e:
+                print(f"❌ 라즈베리파이 스트림 오류: {e}")
+        
+        return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    
+    return "Raspberry Pi camera not available", 404
 
 if __name__ == '__main__':
     print("\n" + "="*60)
