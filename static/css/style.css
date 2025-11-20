@@ -311,3 +311,89 @@ header p {
         padding: 15px;
     }
 }
+
+.camera-selector {
+    margin-bottom: 15px;
+    padding: 15px;
+    background: #f3f4f6;
+    border-radius: 8px;
+}
+
+.camera-select-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.camera-select-row label {
+    font-weight: bold;
+    color: #374151;
+}
+
+.camera-select-row select {
+    padding: 8px 15px;
+    border: 2px solid #667eea;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    background: white;
+}
+
+.camera-status {
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.camera-status.connected {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.camera-status.disconnected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.camera-status.connecting {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.raspberry-ip-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.raspberry-ip-section input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid #667eea;
+    border-radius: 5px;
+    font-size: 1em;
+}
+
+.btn-connect {
+    padding: 8px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-connect:hover {
+    background: #5568d3;
+    transform: translateY(-1px);
+}
+
+.btn-connect:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
