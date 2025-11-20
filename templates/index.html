@@ -17,6 +17,22 @@
             <!-- 왼쪽: 비디오 및 컨트롤 -->
             <div class="card video-section">
                 <h2>📹 실시간 카메라</h2>
+                <div class="camera-selector">
+                    <div class="camera-select-row">
+                        <label for="camera-source">카메라 선택:</label>
+                        <select id="camera-source" onchange="onCameraSourceChange()">
+                            <option value="local">🖥️ PC 웹캠</option>
+                            <option value="raspberry">🍓 라즈베리파이 카메라</option>
+                        </select>
+                        <span id="camera-status" class="camera-status"></span>
+                    </div>
+                    
+                    <!-- 라즈베리파이 IP 입력 (처음엔 숨김) -->
+                    <div id="raspberry-ip-section" class="raspberry-ip-section" style="display: none;">
+                        <input type="text" id="raspberry-ip" placeholder="예: 192.168.0.50" />
+                        <button onclick="connectRaspberry()" class="btn-connect">연결</button>
+                    </div>
+                </div>
                 <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Video Feed">
                 
                 <div class="controls">
