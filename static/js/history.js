@@ -102,7 +102,7 @@ function displayHistory(records) {
     if (records.length === 0) {
         listDiv.innerHTML = `
             <div class="empty-state">
-                <div class="empty-state-icon">📁</div>
+                <div class="empty-state-icon">📂</div>
                 <h3>기록이 없습니다</h3>
                 <p>분석된 기록이 없습니다. 메인 페이지에서 분석을 시작하세요.</p>
             </div>
@@ -116,16 +116,21 @@ function displayHistory(records) {
         const data = record.data;
         const badge = getResultBadge(data.result_type);
         
+        // 썸네일 아이콘 (타입별)
+        let thumbnailIcon = '🎥';
+        if (data.result_type === 'fall') thumbnailIcon = '🚨';
+        else if (data.result_type === 'abnormal') thumbnailIcon = '⚠️';
+        else if (data.result_type === 'normal') thumbnailIcon = '✅';
+        
         html += `
             <div class="history-card" onclick="viewDetail('${record.id}')">
-                <div class="history-thumbnail">
-                    <img src="${data.analyzed_video_url}" alt="Thumbnail" 
-                         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e5e7eb%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%239ca3af%22 font-size=%2248%22>📹</text></svg>'">
+                <div class="history-thumbnail" style="display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-size: 4em;">
+                    ${thumbnailIcon}
                 </div>
                 <div class="history-info">
                     <div class="history-badge">${badge}</div>
-                    <div class="history-time">📅 ${data.timestamp}</div>
-                    <div class="history-frames">🎞️ ${data.total_frames} frames</div>
+                    <div class="history-time">📅 ${data.timestamp || 'N/A'}</div>
+                    <div class="history-frames">🎞️ ${data.total_frames || 0} frames</div>
                 </div>
             </div>
         `;
@@ -175,14 +180,14 @@ function closeDetail() {
 function displayDetail(record, docId) {
     const contentDiv = document.getElementById('detail-content');
     
-    const fall = record.fall_detection;
-    const gait = record.gait_classification;
+    const fall = record.fall_detection || {};
+    const gait = record.gait_classification || {};
     
     let html = `
         <div class="detail-section">
-            <h3>📹 분석 영상</h3>
+            <h3>🎹 분석 영상</h3>
             <video controls width="100%" style="max-width: 640px; border-radius: 10px;">
-                <source src="${record.analyzed_video_url}" type="video/mp4">
+                <source src="${record.analyzed_video_url || ''}" type="video/mp4">
                 브라우저가 비디오를 지원하지 않습니다.
             </video>
         </div>
@@ -192,11 +197,11 @@ function displayDetail(record, docId) {
             <div class="result-item">
                 <div class="result-detail">
                     <strong>분석 시각:</strong>
-                    <span>${record.timestamp}</span>
+                    <span>${record.timestamp || 'N/A'}</span>
                 </div>
                 <div class="result-detail">
                     <strong>총 프레임:</strong>
-                    <span>${record.total_frames} frames</span>
+                    <span>${record.total_frames || 0} frames</span>
                 </div>
                 <div class="result-detail">
                     <strong>결과 타입:</strong>
@@ -212,16 +217,16 @@ function displayDetail(record, docId) {
                 </div>
                 <div class="result-detail">
                     <strong>신뢰도:</strong>
-                    <span>${(fall.confidence * 100).toFixed(1)}%</span>
+                    <span>${((fall.confidence || 0) * 100).toFixed(1)}%</span>
                 </div>
                 <div class="result-detail">
                     <strong>상세:</strong>
-                    <span>${fall.reason}</span>
+                    <span>${fall.reason || 'N/A'}</span>
                 </div>
             </div>
     `;
     
-    if (gait && !gait.error) {
+    if (gait && !gait.error && gait.prediction !== undefined) {
         html += `
             <div class="result-item">
                 <h4>2️⃣ 보행 분류</h4>
@@ -231,11 +236,11 @@ function displayDetail(record, docId) {
                 </div>
                 <div class="result-detail">
                     <strong>비정상 확률:</strong>
-                    <span>${(gait.confidence * 100).toFixed(1)}%</span>
+                    <span>${((gait.confidence || 0) * 100).toFixed(1)}%</span>
                 </div>
                 <div class="result-detail">
                     <strong>정상 확률:</strong>
-                    <span>${((1 - gait.confidence) * 100).toFixed(1)}%</span>
+                    <span>${((1 - (gait.confidence || 0)) * 100).toFixed(1)}%</span>
                 </div>
             </div>
         `;
@@ -257,10 +262,10 @@ function displayDetail(record, docId) {
         <div class="detail-section">
             <h3>🔗 다운로드</h3>
             <div class="download-links">
-                <a href="${record.original_video_url}" target="_blank" class="btn-download">
+                <a href="${record.original_video_url || '#'}" target="_blank" class="btn-download" ${!record.original_video_url ? 'style="pointer-events:none;opacity:0.5"' : ''}>
                     📥 원본 영상
                 </a>
-                <a href="${record.analyzed_video_url}" target="_blank" class="btn-download">
+                <a href="${record.analyzed_video_url || '#'}" target="_blank" class="btn-download" ${!record.analyzed_video_url ? 'style="pointer-events:none;opacity:0.5"' : ''}>
                     📥 분석 영상
                 </a>
             </div>
