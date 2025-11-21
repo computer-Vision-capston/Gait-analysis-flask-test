@@ -9,6 +9,7 @@ let recordingTimer = null;
 let secondsLeft = 10;
 let recordingCheckInterval = null;
 let autoStatusCheckInterval = null;
+let fallAlertSound = null;
 
 // ============================================
 // 녹화 제어 함수
@@ -526,3 +527,191 @@ function uploadVideoFile(event) {
     // input 초기화 (같은 파일 다시 선택 가능하도록)
     event.target.value = '';
 }
+// 낙상 경고 모달 열기
+function showFallAlert(timestamp) {
+    const modal = document.getElementById('fall-alert-modal');
+    const timestampElement = document.getElementById('fall-timestamp');
+    
+    // 타임스탬프 표시
+    if (timestampElement) {
+        timestampElement.textContent = `감지 시각: ${timestamp}`;
+    }
+    
+    // 모달 표시
+    modal.classList.add('active');
+    
+    // body에 깜빡임 효과 추가
+    document.body.classList.add('fall-detected');
+    
+    // 경고음 재생 (선택 사항)
+    playAlertSound();
+    
+    console.log('🚨 낙상 긴급 경고 모달 표시됨');
+}
+
+// 낙상 경고 모달 닫기
+function closeFallAlert() {
+    const modal = document.getElementById('fall-alert-modal');
+    
+    // 모달 숨기기
+    modal.classList.remove('active');
+    
+    // body 깜빡임 효과 제거
+    document.body.classList.remove('fall-detected');
+    
+    // 경고음 중지
+    stopAlertSound();
+    
+    console.log('✅ 낙상 경고 확인됨');
+}
+
+// 경고음 재생
+function playAlertSound() {
+    // 방법 1: 브라우저 내장 beep (간단)
+    try {
+        // Web Audio API로 경고음 생성
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 반복 재생
+        const playBeep = () => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800; // 주파수 (높을수록 높은 소리)
+            oscillator.type = 'sine'; // 파형
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        };
+        
+        // 1초마다 beep
+        fallAlertSound = setInterval(playBeep, 1000);
+        playBeep(); // 즉시 한 번 재생
+        
+    } catch (e) {
+        console.log('경고음 재생 실패:', e);
+    }
+}
+
+// 경고음 중지
+function stopAlertSound() {
+    if (fallAlertSound) {
+        clearInterval(fallAlertSound);
+        fallAlertSound = null;
+    }
+}
+
+// 기존 displayResult 함수 수정
+function displayResult(result) {
+    const displayDiv = document.getElementById('result-display');
+    
+    let html = `
+        <div class="result-item">
+            <h3>⏱️ 분석 정보</h3>
+            <div class="result-detail">
+                <strong>분석 시각:</strong>
+                <span>${result.timestamp}</span>
+            </div>
+            <div class="result-detail">
+                <strong>총 프레임:</strong>
+                <span>${result.total_frames} frames</span>
+            </div>
+        </div>
+    `;
+
+    // 낙상 감지 결과
+    const fall = result.fall_detection;
+    const fallBadge = fall.is_fall 
+        ? `<span class="badge danger">🚨 낙상 감지!</span>`
+        : `<span class="badge success">✅ 낙상 없음</span>`;
+    
+    html += `
+        <div class="result-item">
+            <h3>1️⃣ 낙상 감지</h3>
+            <div class="result-detail">
+                <strong>결과:</strong>
+                ${fallBadge}
+            </div>
+            <div class="result-detail">
+                <strong>신뢰도:</strong>
+                <span>${(fall.confidence * 100).toFixed(1)}%</span>
+            </div>
+            <div class="result-detail">
+                <strong>상세:</strong>
+                <span>${fall.reason}</span>
+            </div>
+        </div>
+    `;
+
+    // 🚨 낙상 감지 시 긴급 경고 모달 표시
+    if (fall.is_fall) {
+        showFallAlert(result.timestamp);
+    }
+
+    // 보행 분류 결과
+    if (result.gait_classification) {
+        const gait = result.gait_classification;
+        
+        if (gait.error) {
+            html += `
+                <div class="result-item">
+                    <h3>2️⃣ 보행 분류</h3>
+                    <div class="result-detail">
+                        <strong>오류:</strong>
+                        <span class="badge warning">${gait.error}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            const gaitBadge = gait.prediction === 0
+                ? `<span class="badge success">정상 보행</span>`
+                : `<span class="badge warning">비정상 보행</span>`;
+            
+            html += `
+                <div class="result-item">
+                    <h3>2️⃣ 보행 분류</h3>
+                    <div class="result-detail">
+                        <strong>결과:</strong>
+                        ${gaitBadge}
+                    </div>
+                    <div class="result-detail">
+                        <strong>비정상 확률:</strong>
+                        <span>${(gait.confidence * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="result-detail">
+                        <strong>정상 확률:</strong>
+                        <span>${((1 - gait.confidence) * 100).toFixed(1)}%</span>
+                    </div>
+                </div>
+            `;
+        }
+    } else {
+        html += `
+            <div class="result-item">
+                <h3>2️⃣ 보행 분류</h3>
+                <div class="result-detail">
+                    <span class="badge info">낙상이 감지되어 보행 분류를 실행하지 않았습니다</span>
+                </div>
+            </div>
+        `;
+    }
+
+    displayDiv.innerHTML = html;
+    showResultSection('display');
+}
+
+// ESC 키로 모달 닫기 (선택 사항)
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('fall-alert-modal');
+        if (modal.classList.contains('active')) {
+            closeFallAlert();
+        }
+    }
+});
