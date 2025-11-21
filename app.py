@@ -7,8 +7,8 @@ from datetime import datetime
 import os
 import sys
 import json
-from raspberry_camera import RaspberryPiCamera
-
+from services.raspberry_camera import RaspberryPiCamera
+from werkzeug.utils import secure_filename
 # 프로젝트 경로 추가
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -560,6 +560,60 @@ def reset():
     
     return jsonify({'status': 'success', 'message': 'System reset'})
 
+@app.route('/upload_video', methods=['POST'])
+def upload_video():
+    """동영상 파일 업로드 및 분석"""
+    global frames_buffer, keypoints_buffer, analysis_result, result_video_path
+    
+    if 'video' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No video file'})
+    
+    file = request.files['video']
+    if file.filename == '':
+        return jsonify({'status': 'error', 'message': 'No selected file'})
+    
+    try:
+        # 임시 파일로 저장
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(RECORDINGS_FOLDER, f'uploaded_{filename}')
+        file.save(temp_path)
+        
+        # 비디오에서 프레임 추출
+        cap = cv2.VideoCapture(temp_path)
+        frames_buffer = []
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frames_buffer.append(frame)
+        
+        cap.release()
+        
+        # 업로드 파일 삭제 (frames_buffer에 이미 저장됨)
+        os.remove(temp_path)
+        
+        if len(frames_buffer) == 0:
+            return jsonify({'status': 'error', 'message': 'No frames extracted'})
+        
+        # 키포인트는 비워두고 run_pipeline에서 추출하도록
+        keypoints_buffer = []
+        analysis_result = None
+        result_video_path = None
+        
+        # 백그라운드에서 분석 시작
+        thread = threading.Thread(target=run_pipeline)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Video uploaded: {len(frames_buffer)} frames',
+            'frames': len(frames_buffer)
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
 
 # ============ Firebase 기록 조회 라우트 ============
 
