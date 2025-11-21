@@ -159,7 +159,7 @@ def run_pipeline():
     print("🔍 파이프라인 시작")
     print("="*60)
     
-    if len(keypoints_buffer) == 0 or len(frames_buffer) == 0:
+    if len(frames_buffer) == 0:
         print("❌ 오류: 수집된 데이터가 없습니다!")
         analysis_result = {
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -175,7 +175,28 @@ def run_pipeline():
             }
         }
         return
-    
+    if len(keypoints_buffer) == 0:
+        print("📊 프레임으로부터 키포인트 추출 중...")
+        pose_detector = mp_pose.Pose(
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
+        
+        for frame in frames_buffer:
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = pose_detector.process(frame_rgb)
+            
+            if results.pose_landmarks:
+                landmarks = []
+                for lm in results.pose_landmarks.landmark:
+                    landmarks.append([lm.x, lm.y, lm.z, lm.visibility])
+                keypoints_buffer.append(landmarks)
+            else:
+                keypoints_buffer.append([[0, 0, 0, 0]] * 33)
+        
+        pose_detector.close()
+        print(f"✅ {len(keypoints_buffer)}개 키포인트 추출 완료")
+        
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     keypoints = np.array(keypoints_buffer)
     
