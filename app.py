@@ -875,10 +875,10 @@ def trigger_auto_recording():
 
 if __name__ == '__main__':
     print("\n" + "="*60)
-    print("🚀 보행 분석 시스템 시작")
+    print("보행 분석 시스템 시작")
     print("="*60)
-    print(f"\n📁 녹화 폴더: {RECORDINGS_FOLDER}")
-    print(f"📁 결과 폴더: {RESULTS_FOLDER}")
-    print("\n📱 브라우저에서 http://localhost:5000 접속\n")
+    print(f"\n녹화 폴더: {RECORDINGS_FOLDER}")
+    print(f"결과 폴더: {RESULTS_FOLDER}")
+    print("\n브라우저에서 http://localhost:5000 접속\n")
     
     app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)

@@ -20,14 +20,15 @@
 <body>
     <div class="container">
         <header>
-            <h1>🚶 보행 분석 시스템</h1>
+            <h1>보행 분석 시스템</h1>
+            <h3>휴먼 픽처 (Human Picture)</h3>
             <p>Gait Analysis Pipeline with Fall Detection</p>
         </header>
 
         <div class="main-content">
             <!-- 왼쪽: 비디오 및 컨트롤 -->
             <div class="card video-section">
-                <h2>📹 실시간 카메라</h2>
+                <h2>실시간 카메라</h2>
                 <div class="camera-selector">
                     <div class="camera-select-row">
                         <label for="camera-source">카메라 선택:</label>
@@ -54,7 +55,7 @@
                         ⏹️ 녹화 중지 & 분석
                     </button>
                     <button class="btn btn-start" id="btn-auto" onclick="startAutoRecording()">
-                        ⏱️ 자동 녹화 (10초)
+                        ⏺️ 자동 녹화 (10초)
                     </button>
                     <button class="btn btn-reset" id="btn-reset" onclick="resetSystem()">
                         🔄 초기화
@@ -73,19 +74,21 @@
                 </div>
 
                 <div class="info-box">
-                    <h4>📋 사용 방법</h4>
+                    <h3>사용 방법</h3>
                     <ul>
                         <li>1. "녹화 시작" 버튼을 눌러 영상 녹화를 시작합니다</li>
                         <li>2. 보행하는 모습을 카메라에 담습니다 (측면 촬영 권장)</li>
                         <li>3. "녹화 중지 & 분석" 버튼으로 분석을 시작합니다</li>
                         <li>4. 오른쪽에서 결과를 확인합니다</li>
+                        <li>ex "자동 녹화" 버튼 클릭시 10초간 자동 녹화 및 분석</li>
+                        <li>ex "동영상 파일 선택" 버튼으로 영상 업로드 후 자동 분석</li>
                     </ul>
                 </div>
             </div>
 
             <!-- 오른쪽: 결과 표시 -->
             <div class="card result-section">
-                <h2>📊 분석 결과</h2>
+                <h2>분석 결과</h2>
                 
                 <div id="result-waiting" class="result-content show">
                     <p style="text-align: center; color: #6b7280; margin-top: 50px;">

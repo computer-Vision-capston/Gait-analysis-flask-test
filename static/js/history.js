@@ -185,7 +185,7 @@ function displayDetail(record, docId) {
     
     let html = `
         <div class="detail-section">
-            <h3>🎹 분석 영상</h3>
+            <h3>분석 영상</h3>
             <video controls width="100%" style="max-width: 640px; border-radius: 10px;">
                 <source src="${record.analyzed_video_url || ''}" type="video/mp4">
                 브라우저가 비디오를 지원하지 않습니다.
@@ -193,7 +193,7 @@ function displayDetail(record, docId) {
         </div>
         
         <div class="detail-section">
-            <h3>📊 분석 결과</h3>
+            <h3>분석 결과</h3>
             <div class="result-item">
                 <div class="result-detail">
                     <strong>분석 시각:</strong>
@@ -260,7 +260,7 @@ function displayDetail(record, docId) {
         </div>
         
         <div class="detail-section">
-            <h3>🔗 다운로드</h3>
+            <h3>다운로드</h3>
             <div class="download-links">
                 <a href="${record.original_video_url || '#'}" target="_blank" class="btn-download" ${!record.original_video_url ? 'style="pointer-events:none;opacity:0.5"' : ''}>
                     📥 원본 영상
