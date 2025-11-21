@@ -581,7 +581,64 @@ def reset():
     
     return jsonify({'status': 'success', 'message': 'System reset'})
 
-
+@app.route('/upload_video', methods=['POST'])
+def upload_video():
+    """동영상 파일 업로드"""
+    global frames_buffer, keypoints_buffer, analysis_result, result_video_path
+    
+    print("=== upload_video 함수 시작 ===")
+    
+    if 'video' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No video file'})
+    
+    file = request.files['video']
+    print(f"파일명: {file.filename}")
+    
+    if not file.filename:
+        return jsonify({'status': 'error', 'message': 'No file selected'})
+    
+    # 임시 저장
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    temp_path = os.path.join(RECORDINGS_FOLDER, f'temp_{timestamp}.mp4')
+    file.save(temp_path)
+    print(f"임시 저장: {temp_path}")
+    
+    # 프레임 추출
+    cap = cv2.VideoCapture(temp_path)
+    temp_frames = []
+    
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        temp_frames.append(frame.copy())
+    
+    cap.release()
+    os.remove(temp_path)
+    
+    print(f"추출된 프레임 수: {len(temp_frames)}")
+    
+    if not temp_frames:
+        return jsonify({'status': 'error', 'message': 'Cannot read video'})
+    
+    # 전역 변수 업데이트
+    frames_buffer = temp_frames
+    keypoints_buffer = []
+    
+    print(f"frames_buffer에 저장됨: {len(frames_buffer)} 프레임")
+    print(f"run_pipeline 호출 직전 확인: {len(frames_buffer)} 프레임")
+    
+    # run_pipeline 호출
+    thread = threading.Thread(target=run_pipeline)
+    thread.daemon = True
+    thread.start()
+    
+    print("=== upload_video 함수 종료 ===")
+    
+    return jsonify({
+        'status': 'success',
+        'message': f'Uploaded {len(frames_buffer)} frames'
+    })
 # ============ Firebase 기록 조회 라우트 ============
 
 @app.route('/get_history', methods=['GET'])
@@ -744,6 +801,77 @@ def raspberry_video_feed():
         return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
     
     return "Raspberry Pi camera not available", 404
+
+@app.route('/trigger_auto_recording', methods=['POST'])
+def trigger_auto_recording():
+    """아두이노 PIR 센서에서 자동 녹화 트리거"""
+    global recording, countdown, keypoints_buffer, frames_buffer, analysis_result, result_video_path
+    global camera_source
+    
+    print("\n" + "="*60)
+    print("🚨 PIR 센서 트리거 감지!")
+    print("="*60)
+    
+    # 이미 녹화 중이거나 카운트다운 중이면 무시
+    if recording or countdown > 0:
+        print("⚠️ 이미 녹화 중 - 트리거 무시")
+        return jsonify({
+            'status': 'busy',
+            'message': 'Already recording or counting down'
+        })
+    
+    print(f"📹 카메라 소스: {camera_source}")
+    
+    # 초기화
+    keypoints_buffer = []
+    frames_buffer = []
+    analysis_result = None
+    result_video_path = None
+    
+    # 자동 녹화 시퀀스 (3초 카운트다운 + 10초 녹화)
+    def auto_recording_sequence():
+        global countdown, recording
+        
+        print("⏱️ 3초 카운트다운 시작...")
+        # 3초 카운트다운
+        for i in range(3, 0, -1):
+            countdown = i
+            print(f"   {i}...")
+            time.sleep(1)
+        
+        countdown = 0
+        recording = True
+        print("🔴 녹화 시작!")
+        
+        # 10초 녹화
+        time.sleep(10)
+        print("⏹️ 녹화 종료 (10초 경과)")
+        
+        # 녹화 중지 및 분석
+        if recording:
+            recording = False
+            print("🔍 분석 시작...")
+            run_pipeline()
+    
+    # 백그라운드에서 실행
+    thread = threading.Thread(target=auto_recording_sequence)
+    thread.daemon = True
+    thread.start()
+    
+    print("✅ 자동 녹화 스레드 시작됨")
+    print("="*60 + "\n")
+    
+    return jsonify({
+        'status': 'success',
+        'message': 'Auto recording triggered by PIR sensor',
+        'source': camera_source,
+        'duration': '13 seconds (3s countdown + 10s recording)'
+    })
+
+
+
+
+
 
 if __name__ == '__main__':
     print("\n" + "="*60)
