@@ -6,6 +6,17 @@
     <title>보행 분석 시스템</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+<div id="fall-alert-modal" class="fall-alert-modal">
+    <div class="fall-alert-content">
+        <div class="fall-alert-icon">🚨</div>
+        <h1 class="fall-alert-title">긴급 상황 감지!</h1>
+        <p class="fall-alert-message">낙상이 감지되었습니다.</p>
+        <p class="fall-alert-timestamp" id="fall-timestamp"></p>
+        <button class="fall-alert-confirm" onclick="closeFallAlert()">
+            확인 및 닫기
+        </button>
+    </div>
+</div>
 <body>
     <div class="container">
         <header>
