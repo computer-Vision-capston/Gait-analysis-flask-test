@@ -116,6 +116,18 @@ function resetSystem() {
         .catch(error => console.error('Error:', error));
 }
 
+function startAutoRecording() {
+    // 녹화 시작 (3초 카운트다운 포함)
+    startRecording();
+    
+    // 13초 후 자동으로 중지 (카운트다운 3초 + 녹화 10초)
+    setTimeout(() => {
+        if (isRecording) {
+            stopRecording();
+        }
+    }, 13000);
+}
+
 // ============================================
 // 결과 확인
 // ============================================
@@ -465,4 +477,49 @@ function switchCamera(source) {
         alert('카메라 전환 중 오류 발생');
         document.getElementById('camera-source').value = currentCameraSource;
     });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const fileInput = document.getElementById('video-file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', uploadVideoFile);
+    }
+});
+
+function uploadVideoFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // 분석 시작 UI로 변경
+    updateUI('analyzing');
+    showResultSection('processing');
+    
+    // FormData로 파일 전송
+    const formData = new FormData();
+    formData.append('video', file);
+    
+    fetch('/upload_video', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // 분석 시작됨 - 결과 확인 시작
+            startCheckingResult();
+        } else {
+            alert('오류: ' + data.message);
+            updateUI('idle');
+            showResultSection('waiting');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('파일 업로드 오류');
+        updateUI('idle');
+        showResultSection('waiting');
+    });
+    
+    // input 초기화 (같은 파일 다시 선택 가능하도록)
+    event.target.value = '';
 }
