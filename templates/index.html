@@ -42,11 +42,18 @@
                     <button class="btn btn-stop" id="btn-stop" onclick="stopRecording()" disabled>
                         ⏹️ 녹화 중지 & 분석
                     </button>
+                    <button class="btn btn-start" id="btn-auto" onclick="startAutoRecording()">
+                        ⏱️ 자동 녹화 (10초)
+                    </button>
                     <button class="btn btn-reset" id="btn-reset" onclick="resetSystem()">
                         🔄 초기화
                     </button>
                     <button class="btn btn-history" id="btn-history" onclick="window.location.href='/history'">
                         📁 이전 기록
+                    </button>
+                    <input type="file" id="video-file-input" accept="video/*" style="display: none;">
+                    <button class="btn btn-start" onclick="document.getElementById('video-file-input').click()">
+                        📁 동영상 파일 선택
                     </button>
                 </div>
 
