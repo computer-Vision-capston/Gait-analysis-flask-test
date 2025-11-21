@@ -441,22 +441,26 @@ function switchCamera(source) {
         if (data.status === 'success') {
             currentCameraSource = source;
             
-            // 비디오 피드 URL 변경 (캐시 방지)
-            const timestamp = new Date().getTime();
-            if (source === 'local') {
-                videoFeed.src = '/video_feed?' + timestamp;
-                statusSpan.className = 'camera-status connected';
-                statusSpan.textContent = '✅ 사용 중';
-            } else {
-                videoFeed.src = '/raspberry/video_feed?' + timestamp;
-                statusSpan.className = 'camera-status connected';
-                statusSpan.textContent = '✅ 연결됨';
-            }
+            // 기존 영상 완전히 끊기
+            videoFeed.src = '';
+            
+            // 짧은 딜레이 후 새 소스 설정
+            setTimeout(() => {
+                const timestamp = new Date().getTime();
+                if (source === 'local') {
+                    videoFeed.src = '/video_feed?' + timestamp;
+                    statusSpan.className = 'camera-status connected';
+                    statusSpan.textContent = '✅ 사용 중';
+                } else {
+                    videoFeed.src = '/raspberry/video_feed?' + timestamp;
+                    statusSpan.className = 'camera-status connected';
+                    statusSpan.textContent = '✅ 연결됨';
+                }
+            }, 100);
             
             console.log('Camera switched to:', source);
         } else {
             alert('카메라 전환 실패: ' + data.message);
-            // 실패 시 원래대로 복구
             document.getElementById('camera-source').value = currentCameraSource;
         }
     })
