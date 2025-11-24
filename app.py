@@ -24,11 +24,11 @@ try:
         bucket_name='capstone-3d5ef.firebasestorage.app'
     )
     FIREBASE_ENABLED = True
-    print("✅ Firebase 연동 활성화")
+    print("Firebase 연동 활성화")
 except Exception as e:
     firebase = None
     FIREBASE_ENABLED = False
-    print(f"⚠️ Firebase 비활성화: {e}")
+    print(f"Firebase 비활성화: {e}")
 
 app = Flask(__name__)
 
@@ -156,11 +156,11 @@ def run_pipeline():
     global keypoints_buffer, frames_buffer, analysis_result, gait_predictor, result_video_path
     
     print("\n" + "="*60)
-    print("🔍 파이프라인 시작")
+    print("파이프라인 시작")
     print("="*60)
     
     if len(frames_buffer) == 0:
-        print("❌ 오류: 수집된 데이터가 없습니다!")
+        print("오류: 수집된 데이터가 없습니다!")
         analysis_result = {
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'total_frames': 0,
@@ -176,7 +176,7 @@ def run_pipeline():
         }
         return
     if len(keypoints_buffer) == 0:
-        print("📊 프레임으로부터 키포인트 추출 중...")
+        print("프레임으로부터 키포인트 추출 중...")
         pose_detector = mp_pose.Pose(
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
@@ -195,13 +195,13 @@ def run_pipeline():
                 keypoints_buffer.append([[0, 0, 0, 0]] * 33)
         
         pose_detector.close()
-        print(f"✅ {len(keypoints_buffer)}개 키포인트 추출 완료")
+        print(f"{len(keypoints_buffer)}개 키포인트 추출 완료")
         
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     keypoints = np.array(keypoints_buffer)
     
-    print(f"📊 수집된 프레임: {len(keypoints)}")
-    print(f"📊 수집된 영상 프레임: {len(frames_buffer)}")
+    print(f"수집된 프레임: {len(keypoints)}")
+    print(f"수집된 영상 프레임: {len(frames_buffer)}")
     
     result = {
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -211,10 +211,10 @@ def run_pipeline():
     # 원본 영상 저장
     original_video_path = os.path.join(RECORDINGS_FOLDER, f'recording_{timestamp}.mp4')
     save_original_video(frames_buffer, original_video_path)
-    print(f"💾 원본 영상 저장: {original_video_path}")
+    print(f"원본 영상 저장: {original_video_path}")
     
     # === 1단계: 낙상 감지 ===
-    print("\n[1단계] 낙상 감지 실행...")
+    print("\n[1단계] 낙상 감지 실행")
     keypoints_xyz = keypoints[:, :, :3]
     fall_result = fall_detector.detect(keypoints_xyz)
     
@@ -226,7 +226,7 @@ def run_pipeline():
     }
     
     if fall_result['is_fall']:
-        print("🚨 낙상 감지! 결과 영상 생성...")
+        print("낙상 감지! 결과 영상 생성 중")
         result_video_path = create_result_video(
             frames_buffer, keypoints, 'fall', fall_result['confidence'], timestamp
         )
@@ -237,10 +237,9 @@ def run_pipeline():
         upload_to_firebase(result, keypoints, original_video_path, result_video_path)
         return
     
-    print("✅ 낙상 없음, 보행 분류로 진행...")
+    print("낙상 없음, 보행 분류로 진행")
     
-    # === 2단계: 보행 분류 ===
-    print("\n[2단계] 보행 분류 실행...")
+    print("\n[2단계] 보행 분류 실행")
     
     if gait_predictor is None:
         model_path = os.path.join(os.path.dirname(__file__), 'models', 'best_model.pt')
@@ -261,9 +260,9 @@ def run_pipeline():
             'label': 'Normal' if prediction == 0 else 'Abnormal'
         }
         
-        print(f"✅ 보행 분류 완료: {result['gait_classification']['label']}")
+        print(f"보행 분류 완료: {result['gait_classification']['label']}")
         
-        print("🎬 결과 영상 생성 중...")
+        print("결과 영상 생성 중")
         result_video_path = create_result_video(
             frames_buffer, keypoints,
             'normal' if prediction == 0 else 'abnormal',
@@ -271,7 +270,7 @@ def run_pipeline():
         )
         
     except Exception as e:
-        print(f"❌ 보행 분류 오류: {e}")
+        print(f"보행 분류 오류: {e}")
         result['gait_classification'] = {'error': str(e)}
     
     analysis_result = result
@@ -280,7 +279,7 @@ def run_pipeline():
     upload_to_firebase(result, keypoints, original_video_path, result_video_path)
     
     print("\n" + "="*60)
-    print("✅ 파이프라인 완료!")
+    print("파이프라인 완료!")
     print("="*60)
 
 
@@ -288,7 +287,7 @@ def upload_to_firebase(result, keypoints, original_video_path, result_video_path
     """Firebase 업로드"""
     if FIREBASE_ENABLED:
         try:
-            print("\n🔥 Firebase 업로드 시작...")
+            print("\n🔥 Firebase 업로드 시작")
             
             # 결과 타입 결정
             if result['fall_detection']['is_fall']:
@@ -323,10 +322,10 @@ def upload_to_firebase(result, keypoints, original_video_path, result_video_path
             }
             
             firebase.save_analysis_result(firebase_data)
-            print("  ✅ Firestore 저장 완료!")
+            print("Firestore 저장 완료!")
             
         except Exception as e:
-            print(f"  ❌ Firebase 업로드 오류: {e}")
+            print(f"Firebase 업로드 오류: {e}")
 
 
 def save_original_video(frames, output_path):
@@ -403,7 +402,7 @@ def create_result_video(frames, keypoints, result_type, confidence, timestamp):
     out.release()
     pose.close()
     
-    print(f"✅ 결과 영상 저장: {output_path}")
+    print(f"결과 영상 저장: {output_path}")
     return output_path
 
 
@@ -611,6 +610,7 @@ def upload_video():
         ret, frame = cap.read()
         if not ret:
             break
+        frame = cv2.resize(frame, (640, 480))
         temp_frames.append(frame.copy())
     
     cap.release()
@@ -641,9 +641,9 @@ def upload_video():
     })
 # ============ Firebase 기록 조회 라우트 ============
 
+# 이전 분석 기록 조회
 @app.route('/get_history', methods=['GET'])
 def get_history():
-    """이전 분석 기록 조회"""
     if not FIREBASE_ENABLED:
         return jsonify({'status': 'error', 'message': 'Firebase not enabled'})
     
@@ -664,10 +664,9 @@ def get_history():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
-
+# 특정 기록 상세 조회
 @app.route('/get_record/<doc_id>', methods=['GET'])
 def get_record(doc_id):
-    """특정 기록 상세 조회"""
     if not FIREBASE_ENABLED:
         return jsonify({'status': 'error', 'message': 'Firebase not enabled'})
     
@@ -680,10 +679,9 @@ def get_record(doc_id):
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
-
+# 기록 삭제
 @app.route('/delete_record/<doc_id>', methods=['DELETE'])
 def delete_record(doc_id):
-    """기록 삭제"""
     if not FIREBASE_ENABLED:
         return jsonify({'status': 'error', 'message': 'Firebase not enabled'})
     
@@ -693,10 +691,9 @@ def delete_record(doc_id):
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
-
+# 라즈베리파이 연결
 @app.route('/raspberry/connect', methods=['POST'])
 def raspberry_connect():
-    """라즈베리파이 연결"""
     global raspberry_camera
     
     data = request.get_json()
@@ -717,7 +714,7 @@ def raspberry_connect():
         if raspberry_camera.connected:
             return jsonify({
                 'status': 'success',
-                'message': '라즈베리파이 연결 성공',
+                'message': '라즈베리파이 연결 성공!',
                 'url': raspberry_ip
             })
         else:
@@ -731,10 +728,9 @@ def raspberry_connect():
         raspberry_camera = None
         return jsonify({'status': 'error', 'message': f'연결 오류: {str(e)}'})
 
-
+# 카메라 소스 선택
 @app.route('/camera/select', methods=['POST'])
 def select_camera():
-    """카메라 소스 선택"""
     global camera_source
     
     data = request.get_json()
@@ -747,7 +743,7 @@ def select_camera():
         return jsonify({'status': 'error', 'message': 'Raspberry Pi camera not connected'})
     
     camera_source = source
-    print(f"📹 카메라 소스 변경: {source}")
+    print(f"카메라 소스 변경: {source}")
     
     return jsonify({
         'status': 'success',
@@ -755,10 +751,9 @@ def select_camera():
         'message': f"Camera switched to {source}"
     })
 
-
+# 현재 카메라 소스 및 상태 조회
 @app.route('/camera/status', methods=['GET'])
 def camera_status():
-    """현재 카메라 소스 및 상태 조회"""
     global camera_source
     
     status = {
@@ -783,10 +778,9 @@ def camera_status():
     
     return jsonify(status)
 
-
+# 라즈베리파이 비디오 스트림 프록시
 @app.route('/raspberry/video_feed')
 def raspberry_video_feed():
-    """라즈베리파이 비디오 스트림 프록시"""
     if raspberry_camera and raspberry_camera.connected:
         import requests
         
@@ -796,31 +790,31 @@ def raspberry_video_feed():
                 for chunk in stream.iter_content(chunk_size=1024):
                     yield chunk
             except Exception as e:
-                print(f"❌ 라즈베리파이 스트림 오류: {e}")
+                print(f"라즈베리파이 스트림 오류: {e}")
         
         return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
     
     return "Raspberry Pi camera not available", 404
 
+# 아두이노 PIR 센서에서 자동 녹화 트리거
 @app.route('/trigger_auto_recording', methods=['POST'])
 def trigger_auto_recording():
-    """아두이노 PIR 센서에서 자동 녹화 트리거"""
     global recording, countdown, keypoints_buffer, frames_buffer, analysis_result, result_video_path
     global camera_source
     
     print("\n" + "="*60)
-    print("🚨 PIR 센서 트리거 감지!")
+    print("PIR 센서 트리거 감지!")
     print("="*60)
     
     # 이미 녹화 중이거나 카운트다운 중이면 무시
     if recording or countdown > 0:
-        print("⚠️ 이미 녹화 중 - 트리거 무시")
+        print("(경고) 이미 녹화 중 - 트리거 무시")
         return jsonify({
             'status': 'busy',
             'message': 'Already recording or counting down'
         })
     
-    print(f"📹 카메라 소스: {camera_source}")
+    print(f"카메라 소스: {camera_source}")
     
     # 초기화
     keypoints_buffer = []
@@ -832,7 +826,7 @@ def trigger_auto_recording():
     def auto_recording_sequence():
         global countdown, recording
         
-        print("⏱️ 3초 카운트다운 시작...")
+        print("3초 카운트다운 시작!")
         # 3초 카운트다운
         for i in range(3, 0, -1):
             countdown = i
@@ -841,16 +835,16 @@ def trigger_auto_recording():
         
         countdown = 0
         recording = True
-        print("🔴 녹화 시작!")
+        print("녹화 시작!")
         
         # 10초 녹화
         time.sleep(10)
-        print("⏹️ 녹화 종료 (10초 경과)")
+        print("녹화 종료 (10초 경과)")
         
         # 녹화 중지 및 분석
         if recording:
             recording = False
-            print("🔍 분석 시작...")
+            print("분석 시작")
             run_pipeline()
     
     # 백그라운드에서 실행
@@ -858,7 +852,7 @@ def trigger_auto_recording():
     thread.daemon = True
     thread.start()
     
-    print("✅ 자동 녹화 스레드 시작됨")
+    print("자동 녹화 스레드 시작됨")
     print("="*60 + "\n")
     
     return jsonify({

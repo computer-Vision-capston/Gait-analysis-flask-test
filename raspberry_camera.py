@@ -1,7 +1,3 @@
-"""
-라즈베리파이 카메라 제어 모듈
-PC에서 라즈베리파이 카메라를 원격 제어
-"""
 import requests
 import base64
 import numpy as np
@@ -18,36 +14,36 @@ class RaspberryPiCamera:
         self.connected = False
         self.check_connection()
     
+    # 라즈베리파이 연결 확인
     def check_connection(self):
-        """라즈베리파이 연결 확인"""
         try:
             response = requests.get(f"{self.url}/", timeout=3)
             if response.status_code == 200:
                 self.connected = True
-                print(f"✅ 라즈베리파이 연결됨: {self.url}")
+                print(f"라즈베리파이 연결됨: {self.url}")
                 return True
         except Exception as e:
             self.connected = False
-            print(f"⚠️ 라즈베리파이 연결 실패: {e}")
+            print(f"라즈베리파이 연결 실패: {e}")
         return False
     
+    # 라즈베리파이에 녹화 시작 명령
     def start_recording(self):
-        """라즈베리파이에 녹화 시작 명령"""
         try:
             response = requests.post(f"{self.url}/start_recording", timeout=5)
             if response.status_code == 200:
                 data = response.json()
-                print(f"📹 라즈베리파이 녹화 시작: {data}")
+                print(f"라즈베리파이 녹화 시작: {data}")
                 return True, data
             return False, {'error': f'Status code: {response.status_code}'}
         except Exception as e:
-            print(f"❌ 녹화 시작 실패: {e}")
+            print(f"녹화 시작 실패: {e}")
             return False, {'error': str(e)}
     
+    # 라즈베리파이에 녹화 중지 명령 및 프레임 수신
     def stop_recording_and_get_frames(self):
-        """라즈베리파이 녹화 중지 및 프레임 수신"""
         try:
-            print("⏹️ 라즈베리파이 녹화 중지 및 프레임 수신 중...")
+            print("라즈베리파이 녹화 중지 및 프레임 수신 중")
             response = requests.post(f"{self.url}/stop_recording", timeout=60)
             
             if response.status_code == 200:
@@ -59,7 +55,7 @@ class RaspberryPiCamera:
                 encoded_frames = data.get('frames', [])
                 frame_count = data.get('frame_count', 0)
                 
-                print(f"📥 {frame_count}개 프레임 수신됨")
+                print(f"{frame_count}개 프레임 수신됨")
                 
                 # base64 디코딩하여 numpy 배열로 변환
                 frames = []
@@ -70,17 +66,17 @@ class RaspberryPiCamera:
                     if frame is not None:
                         frames.append(frame)
                 
-                print(f"✅ {len(frames)}개 프레임 디코딩 완료")
+                print(f"{len(frames)}개 프레임 디코딩 완료")
                 return True, frames, None
             
             return False, None, f'Status code: {response.status_code}'
         
         except Exception as e:
-            print(f"❌ 프레임 수신 실패: {e}")
+            print(f"프레임 수신 실패: {e}")
             return False, None, str(e)
     
+    # 라즈베리파이 상태 조회
     def get_status(self):
-        """라즈베리파이 상태 조회"""
         try:
             response = requests.get(f"{self.url}/status", timeout=3)
             if response.status_code == 200:
@@ -89,8 +85,8 @@ class RaspberryPiCamera:
         except Exception as e:
             return False, {'error': str(e)}
     
+    # 라즈베리파이 카메라 리셋
     def reset(self):
-        """라즈베리파이 카메라 리셋"""
         try:
             response = requests.post(f"{self.url}/reset", timeout=5)
             if response.status_code == 200:
@@ -98,7 +94,6 @@ class RaspberryPiCamera:
             return False, {'error': f'Status code: {response.status_code}'}
         except Exception as e:
             return False, {'error': str(e)}
-    
+    # 비디오 스트림 URL 반환
     def get_video_feed_url(self):
-        """라즈베리파이 비디오 스트림 URL 반환"""
         return f"{self.url}/video_feed"

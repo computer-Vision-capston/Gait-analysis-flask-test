@@ -4,13 +4,6 @@ import mediapipe as mp
 mp_pose = mp.solutions.pose
 
 class FallDetector3Stage:
-    """
-    3단계 검증 낙상 검출기
-    - 1단계: 급격한 하강 감지
-    - 2단계: 큰 높이 변화 확인
-    - 3단계: 최종 자세 검증 (5가지 조건)
-    """
-    
     def __init__(self):
         # MediaPipe 키포인트 인덱스
         self.NOSE = 0
@@ -37,20 +30,6 @@ class FallDetector3Stage:
         self.MIN_STATIONARY_FRAMES = 30  # 1초 (30fps 기준)
     
     def detect(self, keypoints_sequence):
-        """
-        3단계 검증으로 낙상 감지
-        
-        Args:
-            keypoints_sequence: (frames, 33, 3) numpy array
-            
-        Returns:
-            dict: {
-                'is_fall': bool,
-                'confidence': float,
-                'stage': int (1, 2, 3 or -1),
-                'details': dict
-            }
-        """
         if len(keypoints_sequence) < 30:
             return {
                 'is_fall': False,
@@ -61,7 +40,7 @@ class FallDetector3Stage:
             }
         
         print("\n" + "="*60)
-        print("🔍 3단계 낙상 검증 시작")
+        print("3단계 낙상 검증 시작")
         print("="*60)
         
         # 주요 키포인트 계산
@@ -70,14 +49,14 @@ class FallDetector3Stage:
         nose = keypoints_sequence[:, self.NOSE, :2]
         
         # ===== 1단계: 급격한 하강 감지 =====
-        print("\n[1단계] 급격한 하강 감지...")
+        print("\n[1단계] 급격한 하강 감지 중")
         phase1 = self._phase1_rapid_descent(hip_center)
         
-        print(f"  최대 하강 속도: {phase1['max_velocity']:.4f}")
-        print(f"  임계값: {self.MIN_DESCENT_VELOCITY:.4f}")
+        print(f"최대 하강 속도: {phase1['max_velocity']:.4f}")
+        print(f"임계값: {self.MIN_DESCENT_VELOCITY:.4f}")
         
         if not phase1['passed']:
-            print(f"  ❌ 1단계 실패: {phase1['reason']}")
+            print(f"1단계 실패: {phase1['reason']}")
             return {
                 'is_fall': False,
                 'confidence': 0.0,
@@ -85,19 +64,19 @@ class FallDetector3Stage:
                 'reason': phase1['reason'],
                 'details': phase1
             }
-        print(f"  ✅ 1단계 통과!")
+        print(f"1단계 통과!")
         
         # ===== 2단계: 큰 높이 변화 확인 =====
         print("\n[2단계] 큰 높이 변화 확인...")
         phase2 = self._phase2_height_drop(hip_center)
         
-        print(f"  초반 높이: {phase2['initial_height']:.3f}")
-        print(f"  후반 높이: {phase2['final_height']:.3f}")
-        print(f"  높이 변화: {phase2['height_drop']:.3f}")
-        print(f"  임계값: {self.MIN_HEIGHT_DROP:.3f}")
+        print(f"초반 높이: {phase2['initial_height']:.3f}")
+        print(f"후반 높이: {phase2['final_height']:.3f}")
+        print(f"높이 변화: {phase2['height_drop']:.3f}")
+        print(f"임계값: {self.MIN_HEIGHT_DROP:.3f}")
         
         if not phase2['passed']:
-            print(f"  ❌ 2단계 실패: {phase2['reason']}")
+            print(f"2단계 실패: {phase2['reason']}")
             return {
                 'is_fall': False,
                 'confidence': 0.0,
@@ -105,7 +84,7 @@ class FallDetector3Stage:
                 'reason': phase2['reason'],
                 'details': {**phase1, **phase2}
             }
-        print(f"  ✅ 2단계 통과!")
+        print(f"2단계 통과!")
         
         # ===== 3단계: 최종 자세 검증 =====
         print("\n[3단계] 최종 자세 검증 (5가지 조건)...")
@@ -113,15 +92,15 @@ class FallDetector3Stage:
             keypoints_sequence, hip_center, nose
         )
         
-        print(f"  1. 낮은 위치: {'✅' if phase3['is_on_ground'] else '❌'} (y={phase3['final_height']:.3f})")
-        print(f"  2. 수평 자세: {'✅' if phase3['is_horizontal'] else '❌'} (차이={phase3['head_hip_diff']:.3f})")
-        print(f"  3. 누운 각도: {'✅' if phase3['is_lying'] else '❌'} (각도={phase3['body_angle']:.1f}°)")
-        print(f"  4. 정지 상태: {'✅' if phase3['is_stationary'] else '❌'} (움직임={phase3['avg_movement']:.4f})")
-        print(f"  5. 지속 시간: {'✅' if phase3['sufficient_duration'] else '❌'} ({phase3['stationary_frames']}프레임)")
-        print(f"  통과: {phase3['checks_passed']}/5")
+        print(f"1. 낮은 위치: {'OK' if phase3['is_on_ground'] else 'N'} (y={phase3['final_height']:.3f})")
+        print(f"2. 수평 자세: {'OK' if phase3['is_horizontal'] else 'N'} (차이={phase3['head_hip_diff']:.3f})")
+        print(f"3. 누운 각도: {'OK' if phase3['is_lying'] else 'N'} (각도={phase3['body_angle']:.1f}°)")
+        print(f"4. 정지 상태: {'OK' if phase3['is_stationary'] else 'N'} (움직임={phase3['avg_movement']:.4f})")
+        print(f"5. 지속 시간: {'OK' if phase3['sufficient_duration'] else 'N'} ({phase3['stationary_frames']}프레임)")
+        print(f"통과: {phase3['checks_passed']}/5")
         
         if not phase3['passed']:
-            print(f"  ❌ 3단계 실패: 최종 자세가 낙상과 다름")
+            print(f"3단계 실패: 최종 자세가 낙상과 다름")
             return {
                 'is_fall': False,
                 'confidence': 0.0,
@@ -129,13 +108,13 @@ class FallDetector3Stage:
                 'reason': '최종 자세가 낙상과 다름',
                 'details': {**phase1, **phase2, **phase3}
             }
-        print(f"  ✅ 3단계 통과!")
+        print(f"3단계 통과!")
         
         # ===== 모든 단계 통과 → 낙상! =====
         confidence = self._calculate_confidence(phase1, phase2, phase3)
         
         print("\n" + "="*60)
-        print(f"🚨 낙상 감지! (신뢰도: {confidence*100:.1f}%)")
+        print(f"낙상 감지! (신뢰도: {confidence*100:.1f}%)")
         print("="*60)
         
         return {
