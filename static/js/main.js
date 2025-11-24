@@ -339,7 +339,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('camera-status').textContent = '✅ 사용 중';
     
     updateCameraStatus();
-    setInterval(updateCameraStatus, 5000);
+    setInterval(updateCameraStatus, 10000);
 
     const fileInput = document.getElementById('video-file-input');
     if (fileInput) {
