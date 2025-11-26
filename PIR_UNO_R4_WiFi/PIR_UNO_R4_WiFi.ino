@@ -10,11 +10,11 @@
 #include <WiFiS3.h>  // UNO R4 WiFi 전용 라이브러리
 
 // WiFi 정보
-char ssid[] = "U+NetACB3";           // 와이파이 이름
+char ssid[] = "SunMoon-WiFi6";           // 와이파이 이름
 char password[] = "4000019202";    // 와이파이 비밀번호
 
 // Flask 서버 정보
-const char* serverIP = "192.168.219.112";  // PC의 IP 주소 (ipconfig로 확인)
+const char* serverIP = "10.20.104.176";  // PC의 IP 주소 (ipconfig로 확인)
 const int serverPort = 5000;              // Flask 포트
 
 // PIR 센서 핀
@@ -52,7 +52,7 @@ void setup() {
   // WiFi 연결 시도
   while (status != WL_CONNECTED) {
     Serial.print("연결 시도 중...");
-    status = WiFi.begin(ssid, password);
+    status = WiFi.begin(ssid);
     delay(5000);  // 5초 대기
   }
   
@@ -77,7 +77,7 @@ void setup() {
   Serial.println("시스템 준비 완료!");
   Serial.println("  사람 감지 시 Flask 서버에 요청합니다.");
 
-
+}
 void loop() {
   // WiFi 연결 확인
   if (WiFi.status() != WL_CONNECTED) {
