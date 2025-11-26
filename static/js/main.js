@@ -715,3 +715,26 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// 페이지 로드시 모델 목록 가져오기
+async function loadModels() {
+    const res = await fetch('/get_models');
+    const data = await res.json();
+    const select = document.getElementById('model-select');
+    data.models.forEach(m => {
+        select.innerHTML += `<option value="${m}">${m}</option>`;
+    });
+}
+
+// 모델 변경
+async function onModelChange() {
+    const model = document.getElementById('model-select').value;
+    await fetch('/select_model', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({model: model})
+    });
+}
+
+// 페이지 로드시 호출
+window.onload = loadModels;

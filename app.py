@@ -419,6 +419,22 @@ def video_feed():
     """비디오 스트림"""
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+# 모델 목록 가져오기 
+@app.route('/get_models', methods=['GET'])
+def get_models():
+    models_dir = 'models'
+    pt_files = [f for f in os.listdir(models_dir) if f.endswith('.pt')]
+    return jsonify({'models': pt_files})
+
+# 모델 변경하기
+@app.route('/select_model', methods=['POST'])
+def select_model():
+    global gait_predictor
+    model_name = request.json.get('model')
+    model_path = os.path.join('models', model_name)
+    gait_predictor = GaitPredictor(model_path=model_path)
+    return jsonify({'status': 'success', 'model': model_name})
+
 
 @app.route('/start_recording', methods=['POST'])
 def start_recording():

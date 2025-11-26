@@ -8,7 +8,7 @@
 </head>
 <div id="fall-alert-modal" class="fall-alert-modal">
     <div class="fall-alert-content">
-        <div class="fall-alert-icon">🚨</div>
+        <div class="fall-alert-icon">경고! 🚨 경고!</div>
         <h1 class="fall-alert-title">긴급 상황 감지!</h1>
         <p class="fall-alert-message">낙상이 감지되었습니다.</p>
         <p class="fall-alert-timestamp" id="fall-timestamp"></p>
@@ -33,10 +33,12 @@
                     <div class="camera-select-row">
                         <label for="camera-source">카메라 선택:</label>
                         <select id="camera-source" onchange="onCameraSourceChange()">
-                            <option value="local">🖥️ PC 웹캠</option>
-                            <option value="raspberry">🍓 라즈베리파이 카메라</option>
+                            <option value="local">PC 웹캠</option>
+                            <option value="raspberry">라즈베리파이 카메라</option>
                         </select>
                         <span id="camera-status" class="camera-status"></span>
+                        <label for="model-select" style="margin-left: 20px;">모델 선택:</label>
+                        <select id="model-select" onchange="onModelChange()"></select>
                     </div>
                     
                     <!-- 라즈베리파이 IP 입력 (처음엔 숨김) -->
