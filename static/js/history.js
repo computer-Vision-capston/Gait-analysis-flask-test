@@ -1,6 +1,4 @@
-// ============================================
-// 이전 기록 페이지 JavaScript
-// ============================================
+// 히스토리 js 
 
 let currentFilter = 'all';
 
@@ -10,9 +8,9 @@ window.addEventListener('DOMContentLoaded', () => {
     loadHistory('all');
 });
 
-// ============================================
+
 // Firebase 연결 확인
-// ============================================
+
 
 function checkFirebaseConnection() {
     const statusDiv = document.getElementById('firebase-status');
@@ -44,9 +42,7 @@ function checkFirebaseConnection() {
         });
 }
 
-// ============================================
 // 기록 로드
-// ============================================
 
 function filterHistory(type) {
     currentFilter = type;
@@ -144,7 +140,7 @@ function getResultBadge(type) {
     if (type === 'fall') return '<span class="badge danger">🔴 낙상</span>';
     if (type === 'abnormal') return '<span class="badge warning">🟠 비정상</span>';
     if (type === 'normal') return '<span class="badge success">🟢 정상</span>';
-    return '<span class="badge">❓ 알 수 없음</span>';
+    return '<span class="badge">알 수 없음</span>';
 }
 
 // ============================================
@@ -210,10 +206,10 @@ function displayDetail(record, docId) {
             </div>
             
             <div class="result-item">
-                <h4>1️⃣ 낙상 감지</h4>
+                <h4>(1) 낙상 감지</h4>
                 <div class="result-detail">
                     <strong>낙상 여부:</strong>
-                    <span>${fall.is_fall ? '🚨 낙상 감지' : '✅ 낙상 없음'}</span>
+                    <span>${fall.is_fall ? '낙상 감지' : '낙상 없음'}</span>
                 </div>
                 <div class="result-detail">
                     <strong>신뢰도:</strong>
@@ -229,10 +225,10 @@ function displayDetail(record, docId) {
     if (gait && !gait.error && gait.prediction !== undefined) {
         html += `
             <div class="result-item">
-                <h4>2️⃣ 보행 분류</h4>
+                <h4>(2) 보행 분류</h4>
                 <div class="result-detail">
                     <strong>결과:</strong>
-                    <span>${gait.prediction === 0 ? '✅ 정상 보행' : '⚠️ 비정상 보행'}</span>
+                    <span>${gait.prediction === 0 ? '정상 보행' : '비정상 보행'}</span>
                 </div>
                 <div class="result-detail">
                     <strong>비정상 확률:</strong>
@@ -247,7 +243,7 @@ function displayDetail(record, docId) {
     } else if (gait && gait.error) {
         html += `
             <div class="result-item">
-                <h4>2️⃣ 보행 분류</h4>
+                <h4>(2) 보행 분류</h4>
                 <div class="result-detail">
                     <strong>오류:</strong>
                     <span class="badge warning">${gait.error}</span>
@@ -263,17 +259,17 @@ function displayDetail(record, docId) {
             <h3>다운로드</h3>
             <div class="download-links">
                 <a href="${record.original_video_url || '#'}" target="_blank" class="btn-download" ${!record.original_video_url ? 'style="pointer-events:none;opacity:0.5"' : ''}>
-                    📥 원본 영상
+                    원본 영상
                 </a>
                 <a href="${record.analyzed_video_url || '#'}" target="_blank" class="btn-download" ${!record.analyzed_video_url ? 'style="pointer-events:none;opacity:0.5"' : ''}>
-                    📥 분석 영상
+                    분석 영상
                 </a>
             </div>
         </div>
         
         <div class="detail-section">
             <button class="btn-delete" onclick="deleteRecord('${docId}')">
-                🗑️ 기록 삭제
+                기록 삭제
             </button>
         </div>
     `;
@@ -303,9 +299,8 @@ function deleteRecord(docId) {
         });
 }
 
-// ============================================
+
 // 기타
-// ============================================
 
 function goBack() {
     window.location.href = '/';
