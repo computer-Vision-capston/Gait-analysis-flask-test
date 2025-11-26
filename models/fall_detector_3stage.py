@@ -225,7 +225,7 @@ class FallDetector3Stage:
         ]
         
         checks_passed = sum(checks)
-        passed = checks_passed >= 2  # 5개 중 4개 이상
+        passed = checks_passed >= 2  # 5개 중 2개 이상
         
         return {
             'passed': passed,

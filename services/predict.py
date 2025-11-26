@@ -56,19 +56,12 @@ class GaitLSTM(nn.Module):
 
 class GaitPredictor:
     def __init__(self, model_path='models/best_model.pt', target_frames=400):
-        """
-        보행 예측기
-        
-        Args:
-            model_path: 학습된 모델 경로
-            target_frames: 목표 프레임 수
-        """
         print("="*60)
         print("🚀 보행 분석 시스템 초기화")
         print("="*60)
         
         # 모델 로드
-        print(f"📦 모델 로드 중: {model_path}")
+        print(f"모델 로드 중: {model_path}")
         self.model = GaitLSTM(
             input_size=132,
             hidden_size=64,
@@ -92,10 +85,10 @@ class GaitPredictor:
             min_tracking_confidence=0.5
         )
         
-        print("✅ 초기화 완료!")
+        print("초기화 완료!")
     
+    # 영상에서 키포인트 추출
     def extract_keypoints_from_video(self, video_path):
-        """영상에서 키포인트 추출"""
         cap = cv2.VideoCapture(video_path)
         keypoints_list = []
         
@@ -123,8 +116,8 @@ class GaitPredictor:
         cap.release()
         return np.array(keypoints_list)
     
+    # 키포인트 전처리
     def preprocess_keypoints(self, keypoints):
-        """키포인트 전처리"""
         # 1. 사람 등장 시점부터 자르기
         avg_visibility = np.mean(keypoints[:, :, 3], axis=1)
         valid_frames = np.where(avg_visibility > 0.3)[0]
@@ -170,32 +163,32 @@ class GaitPredictor:
         print(f"\n🔍 분석 중: {video_path}")
         
         # 키포인트 추출
-        print("   1. 키포인트 추출 중...")
+        print("1. 키포인트 추출 중...")
         keypoints = self.extract_keypoints_from_video(video_path)
-        print(f"      → {keypoints.shape[0]} 프레임 추출")
+        print(f" -> {keypoints.shape[0]} 프레임 추출")
         
         # 디버그 정보
         avg_vis = np.mean(keypoints[:, :, 3])
-        print(f"      → 평균 visibility: {avg_vis:.4f}")
+        print(f" -> 평균 visibility: {avg_vis:.4f}")
         non_zero_frames = np.sum(np.mean(keypoints[:, :, 3], axis=1) > 0.3)
-        print(f"      → 유효 프레임 수: {non_zero_frames}/{keypoints.shape[0]}")
+        print(f" -> 유효 프레임 수: {non_zero_frames}/{keypoints.shape[0]}")
         
         # 전처리
-        print("   2. 전처리 중...")
+        print("2. 전처리 중...")
         processed = self.preprocess_keypoints(keypoints)
-        print(f"      → Shape: {processed.shape}")
+        print(f" -> Shape: {processed.shape}")
         
         # 디버그
         non_zero_ratio = (processed[0] != 0).float().mean().item()
-        print(f"      → Non-zero 비율: {non_zero_ratio:.4f}")
-        print(f"      → Min: {processed.min().item():.4f}, Max: {processed.max().item():.4f}")
+        print(f" ->  Non-zero 비율: {non_zero_ratio:.4f}")
+        print(f" ->  Min: {processed.min().item():.4f}, Max: {processed.max().item():.4f}")
         
         # 예측
-        print("   3. 예측 중...")
+        print("3. 예측 중...")
         with torch.no_grad():
             prediction_prob = self.model(processed)[0][0].item()
         
-        print(f"      → Raw output: {prediction_prob:.6f}")
+        print(f" -> Raw output: {prediction_prob:.6f}")
         
         prediction = 1 if prediction_prob > 0.5 else 0
         
@@ -208,28 +201,22 @@ class GaitPredictor:
 
 def main():
     """메인 실행"""
-    print("""
-    ╔══════════════════════════════════════════════════════════╗
-    ║                 보행 분석 시스템                           ║
-    ║              Gait Analysis System (PyTorch)              ║
-    ╚══════════════════════════════════════════════════════════╝
-    """)
+    print("보행 분석 시스템 시작")
     
     # 모델 경로 확인
     model_path = 'models/best_model.pt'
     if not Path(model_path).exists():
-        print(f"❌ 모델을 찾을 수 없습니다: {model_path}")
-        print("   먼저 train_model.py로 모델을 학습하세요!")
+        print(f"모델을 찾을 수 없습니다: {model_path}")
         return
     
     # 예측기 생성
     predictor = GaitPredictor(model_path=model_path, target_frames=400)
     
     # 영상 경로 입력
-    video_path = input("\n📹 분석할 영상 경로를 입력하세요: ").strip()
+    video_path = input("\n분석할 영상 경로를 입력하세요: ").strip()
     
     if not Path(video_path).exists():
-        print(f"❌ 영상을 찾을 수 없습니다: {video_path}")
+        print(f"영상을 찾을 수 없습니다: {video_path}")
         return
     
     # 예측
@@ -238,7 +225,7 @@ def main():
         
         # 결과 출력
         print("\n" + "="*60)
-        print("📊 분석 결과")
+        print("분석 결과")
         print("="*60)
         
         if prediction == 0:
@@ -246,19 +233,19 @@ def main():
         else:
             result = "비정상 보행 (Abnormal Gait)"
         
-        print(f"\n🎯 예측: {result}")
-        print(f"📈 확률: {confidence:.2%}")
+        print(f"\n예측: {result}")
+        print(f"확률: {confidence:.2%}")
         print(f"   - 정상: {(1-confidence)*100:.1f}%")
         print(f"   - 비정상: {confidence*100:.1f}%")
         
         print("\n" + "="*60)
         
     except Exception as e:
-        print(f"\n❌ 오류 발생: {e}")
+        print(f"\n오류 발생: {e}")
         import traceback
         traceback.print_exc()
     
-    print("\n👋 프로그램 종료")
+    print("\n프로그램 종료")
 
 
 if __name__ == "__main__":

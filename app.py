@@ -830,7 +830,7 @@ def trigger_auto_recording():
         # 3초 카운트다운
         for i in range(3, 0, -1):
             countdown = i
-            print(f"   {i}...")
+            print(f"{i}...")
             time.sleep(1)
         
         countdown = 0
