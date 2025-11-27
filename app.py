@@ -60,7 +60,6 @@ gait_predictor = None
 
 
 class VideoCamera:
-    """웹캠 관리 클래스"""
     def __init__(self):
         self.video = cv2.VideoCapture(0)
         self.video.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -75,8 +74,8 @@ class VideoCamera:
         return success, frame
 
 
+# 비디오 스트림 생성
 def gen_frames():
-    """비디오 스트림 생성"""
     global camera, recording, countdown, keypoints_buffer, frames_buffer, pose_detector
     
     if camera is None:
@@ -136,15 +135,14 @@ def gen_frames():
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 
+#이전 기록 페이지 
 @app.route('/history')
 def history_page():
-    """이전 기록 페이지"""
     return render_template('history.html')
 
 
 @app.route('/check_firebase', methods=['GET'])
 def check_firebase():
-    """Firebase 연결 상태 확인"""
     return jsonify({
         'enabled': FIREBASE_ENABLED,
         'message': 'Firebase is active' if FIREBASE_ENABLED else 'Firebase is not configured'
@@ -152,7 +150,6 @@ def check_firebase():
 
 
 def run_pipeline():
-    """파이프라인 실행"""
     global keypoints_buffer, frames_buffer, analysis_result, gait_predictor, result_video_path
     
     print("\n" + "="*60)
@@ -284,10 +281,9 @@ def run_pipeline():
 
 
 def upload_to_firebase(result, keypoints, original_video_path, result_video_path):
-    """Firebase 업로드"""
     if FIREBASE_ENABLED:
         try:
-            print("\n🔥 Firebase 업로드 시작")
+            print("\nFirebase 업로드 시작")
             
             # 결과 타입 결정
             if result['fall_detection']['is_fall']:
@@ -329,7 +325,6 @@ def upload_to_firebase(result, keypoints, original_video_path, result_video_path
 
 
 def save_original_video(frames, output_path):
-    """원본 영상 저장"""
     if len(frames) == 0:
         return
     
@@ -344,7 +339,6 @@ def save_original_video(frames, output_path):
 
 
 def create_result_video(frames, keypoints, result_type, confidence, timestamp):
-    """결과 영상 생성"""
     if len(frames) == 0:
         return None
     
@@ -408,15 +402,15 @@ def create_result_video(frames, keypoints, result_type, confidence, timestamp):
 
 # ============ Flask 라우트 ============
 
+# 메인 페이지 
 @app.route('/')
 def index():
-    """메인 페이지"""
     return render_template('index.html')
 
 
+# 비디오 스트림 
 @app.route('/video_feed')
 def video_feed():
-    """비디오 스트림"""
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 # 모델 목록 가져오기 
@@ -438,7 +432,6 @@ def select_model():
 
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
-    """녹화 시작 (로컬 또는 라즈베리파이)"""
     global recording, countdown, keypoints_buffer, frames_buffer, analysis_result, result_video_path
     global camera_source
     
@@ -482,7 +475,6 @@ def start_recording():
 
 @app.route('/stop_recording', methods=['POST'])
 def stop_recording():
-    """녹화 중지 및 분석 (로컬 또는 라즈베리파이)"""
     global recording, camera_source, frames_buffer, keypoints_buffer
     
     if camera_source == 'raspberry':
@@ -514,7 +506,7 @@ def stop_recording():
             return jsonify({'status': 'error', 'message': 'Raspberry Pi camera not connected'})
     
     else:
-        # 로컬 카메라 녹화 중지 (기존 코드)
+        # 로컬 카메라 녹화 중지
         if not recording:
             return jsonify({'status': 'error', 'message': 'Not recording'})
         
@@ -526,9 +518,9 @@ def stop_recording():
         
         return jsonify({'status': 'success', 'message': 'Local recording stopped', 'source': 'local'})
 
+# 녹화 상태 조회 
 @app.route('/get_recording_status', methods=['GET'])
 def get_recording_status():
-    """녹화 상태 조회"""
     global recording, analysis_result
     
     return jsonify({
@@ -537,9 +529,9 @@ def get_recording_status():
     })
 
 
+# 분석 결과 조회 
 @app.route('/get_result', methods=['GET'])
 def get_result():
-    """분석 결과 조회"""
     global analysis_result, result_video_path
     
     if analysis_result is None:
@@ -552,9 +544,9 @@ def get_result():
     })
 
 
+# 결과 영상 스트리밍 
 @app.route('/result_video_feed')
 def result_video_feed():
-    """결과 영상 스트리밍"""
     global result_video_path
     
     if result_video_path is None or not os.path.exists(result_video_path):
@@ -582,9 +574,9 @@ def result_video_feed():
     return Response(gen_result_video(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
+# 리셋 라우트
 @app.route('/reset', methods=['POST'])
 def reset():
-    """시스템 초기화"""
     global recording, countdown, keypoints_buffer, frames_buffer, analysis_result, result_video_path
     
     recording = False
@@ -596,12 +588,12 @@ def reset():
     
     return jsonify({'status': 'success', 'message': 'System reset'})
 
+# 동영상 업로드 라우트 
 @app.route('/upload_video', methods=['POST'])
 def upload_video():
-    """동영상 파일 업로드"""
     global frames_buffer, keypoints_buffer, analysis_result, result_video_path
     
-    print("=== upload_video 함수 시작 ===")
+    print("== upload_video 함수 시작 ==")
     
     if 'video' not in request.files:
         return jsonify({'status': 'error', 'message': 'No video file'})
@@ -655,7 +647,6 @@ def upload_video():
         'status': 'success',
         'message': f'Uploaded {len(frames_buffer)} frames'
     })
-# ============ Firebase 기록 조회 라우트 ============
 
 # 이전 분석 기록 조회
 @app.route('/get_history', methods=['GET'])
@@ -877,9 +868,6 @@ def trigger_auto_recording():
         'source': camera_source,
         'duration': '13 seconds (3s countdown + 10s recording)'
     })
-
-
-
 
 
 
