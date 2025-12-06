@@ -595,6 +595,11 @@ def upload_video():
     
     print("== upload_video 함수 시작 ==")
     
+    analysis_result = None
+    result_video_path = None
+    keypoints_buffer = []
+    frames_buffer = []
+
     if 'video' not in request.files:
         return jsonify({'status': 'error', 'message': 'No video file'})
     
