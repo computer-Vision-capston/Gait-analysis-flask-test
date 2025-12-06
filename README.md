@@ -1,159 +1,157 @@
-# 보행 분석 시스템 (Gait Analysis System)
+# Human Picture - 독거노인 낙상 감지 및 보행 분석 시스템
 
-Flask 기반 웹 인터페이스로 실시간 낙상 감지 및 보행 분류를 수행하는 시스템
+AI 기반 저비용 원격 모니터링 시스템으로, 낙상 감지와 보행 이상 분석 기능을 제공합니다.
 
-## 📁 프로젝트 구조
+## 프로젝트 개요
+
+- **목표**: 독거노인의 낙상 자동 감지 및 보행 이상 분석
+- **핵심 기술**: MediaPipe Pose, LSTM, 규칙 기반 알고리즘
+- **하드웨어**: 라즈베리파이 4, USB 웹캠, 아두이노, PIR 센서
+- **예상 비용**: 약 15만원 (기존 상용 장비 대비 1/3 수준)
+
+## 시스템 구조
 
 ```
-FLASK/
-├── app.py                              # Flask 메인 앱
-├── models/                             # 모델 및 알고리즘
-│   ├── best_model.pt                   # LSTM 보행 분류 모델 (필요)
-│   └── fall_detector_3stage.py         # 낙상 감지 알고리즘 (룰 기반)
-├── services/                           # 추론 서비스
-│   ├── predict.py                      # 보행 분류 추론
-│   └── test_fall_detection.py          # 낙상 감지 테스트
-├── templates/                          # HTML 템플릿
-│   └── index.html                      # 메인 페이지
-├── static/                             # 정적 파일
-│   ├── css/
-│   │   └── style.css                   # 스타일시트
-│   └── js/
-│       └── main.js                     # 메인 JavaScript
-└── utils/                              # 유틸리티 (선택)
+[PIR 센서 감지] → [영상 녹화] → [키포인트 추출] → [낙상 판단] → [보행 분류] → [결과 저장]
 ```
 
-## 🚀 시작하기
+## 설치 방법
 
-### 1. 필수 라이브러리 설치
+### 1. 저장소 클론
 
 ```bash
-# 콘다 가상환경 활성화
-conda activate your_env_name
-
-# 필수 패키지
-pip install flask opencv-python mediapipe torch numpy
+git clone https://github.com/your-username/human-picture.git
+cd human-picture
 ```
 
-### 2. 모델 파일 준비
-
-`best_model.pt` 파일을 `models/` 폴더에 복사하세요.
-
-### 3. Flask 앱 실행
+### 2. 가상환경 생성 (권장)
 
 ```bash
-python app.py
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Linux/Mac
+source venv/bin/activate
 ```
 
-### 4. 브라우저 접속
+### 3. 의존성 설치
 
-http://localhost:5000
-
-## 📖 사용 방법
-
-1. **녹화 시작**: "⏺️ 녹화 시작" 버튼 클릭
-2. **카운트다운**: 3초 카운트다운 후 자동 녹화 시작
-3. **보행 촬영**: 카메라 앞에서 보행 (측면 촬영 권장)
-4. **자동 종료**: 10초 후 자동으로 녹화 종료 및 분석 시작
-   - 수동 중지도 가능: "⏹️ 녹화 중지 & 분석" 버튼
-5. **결과 확인**: 
-   - 왼쪽: 분석된 영상 자동 재생 (스켈레톤 + 색상 오버레이)
-   - 오른쪽: 상세 분석 결과
-6. **초기화**: "🔄 초기화" 버튼으로 실시간 카메라로 복귀
-
-## 🎨 시각적 피드백
-
-### 색상 코딩
-- 🔴 **빨간색**: 낙상 감지
-- 🟠 **주황색**: 비정상 보행
-- 🟢 **녹색**: 정상 보행
-
-### 결과 영상
-- MediaPipe 스켈레톤 표시
-- 결과에 따른 색상 테두리 및 오버레이
-- 신뢰도 표시
-- 자동 반복 재생
-
-## 🔍 파이프라인 구조
-
-### 1단계: 낙상 감지 (Fall Detection)
-- **방식**: 3단계 룰 기반 알고리즘
-- **검증 단계**:
-  1. 급격한 하강 감지
-  2. 큰 높이 변화 확인
-  3. 최종 자세 검증 (5가지 조건)
-- **결과**: 낙상 감지 시 즉시 알림, 파이프라인 종료
-
-### 2단계: 보행 분류 (Gait Classification)
-- **방식**: LSTM 딥러닝 모델
-- **조건**: 낙상 미감지 시에만 실행
-- **결과**: 정상/비정상 보행 분류 + 신뢰도
-
-## ⚙️ 주요 기능
-
-- ✅ 실시간 웹캠 스트리밍 (스켈레톤 없는 깔끔한 화면)
-- ✅ 3초 카운트다운 후 녹화 시작
-- ✅ 10초 자동 녹화 종료 (수동 중지도 가능)
-- ✅ 화면에 남은 시간 실시간 표시
-- ✅ MediaPipe 기반 포즈 추정
-- ✅ 3단계 검증 낙상 감지 (False Positive 최소화)
-- ✅ LSTM 기반 보행 분류
-- ✅ 웹 인터페이스로 직관적인 제어
-- ✅ 실시간 결과 표시
-- ✅ 원본 영상 자동 저장 (`recordings/original/`)
-- ✅ 분석 결과 영상 생성 및 저장 (`recordings/analyzed/`)
-- ✅ 색상 코딩으로 결과 시각화
-- ✅ 분석 영상에 스켈레톤 + 색상 오버레이
-- ✅ 분석 완료 후 자동으로 결과 영상 재생
-- ✅ 초기화 시 실시간 카메라로 복귀
-
-## 🎯 기술 스택
-
-- **Backend**: Flask, Python
-- **AI/ML**: PyTorch, MediaPipe
-- **Frontend**: HTML, CSS, JavaScript
-- **Computer Vision**: OpenCV
-
-## 📊 출력 결과
-
-### 낙상 감지
-- 낙상 여부 (O/X)
-- 신뢰도 (%)
-- 상세 정보 (통과한 단계)
-
-### 보행 분류
-- 정상/비정상 판정
-- 비정상 확률 (%)
-- 정상 확률 (%)
-
-## 🔧 문제 해결
-
-### 웹캠이 작동하지 않는 경우
-```python
-# app.py에서 카메라 인덱스 변경
-self.video = cv2.VideoCapture(1)  # 0 대신 1 또는 2 시도
-```
-
-### 모델 로드 오류
-- `models/best_model.pt` 파일이 존재하는지 확인
-- 파일 경로가 올바른지 확인
-
-### MediaPipe 오류
 ```bash
-pip install --upgrade mediapipe
+pip install -r requirements.txt
 ```
 
-## 📝 참고사항
+### 4. PyTorch 설치 (GPU 사용 시)
 
-- 웹캠은 30fps, 640x480 해상도로 설정됨
-- 낙상 감지는 최소 1초 (30프레임) 필요
-- 보행 분류는 400프레임으로 리샘플링
-- 측면 촬영 시 가장 정확한 결과
+```bash
+# CUDA 11.8 기준
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+```
 
-## 🎨 UI 커스터마이징
+## 폴더 구조
 
-`static/css/style.css`에서 색상, 레이아웃 등을 수정할 수 있습니다.
+```
+human-picture/
+├── data/
+│   ├── normal/              # 정상 보행 영상
+│   └── special/             # 비정상 보행 영상
+├── processed_data/
+│   ├── raw_keypoints/       # 추출된 키포인트
+│   └── preprocessed/        # 전처리된 데이터
+├── models/                  # 학습된 모델
+├── utils/
+│   ├── extract_keypoints.py # 키포인트 추출
+│   ├── preprocess.py        # 데이터 전처리
+│   └── train.py             # 모델 학습
+├── predict.py               # 추론
+├── README.md
+└── requirements.txt
+```
 
-## 📞 문의
+## 실행 방법
 
-문제가 발생하면 로그를 확인하거나 이슈를 등록해주세요.
+### 1단계: 키포인트 추출
+
+영상 데이터에서 MediaPipe를 사용하여 신체 키포인트를 추출합니다.
+
+```bash
+python utils/extract_keypoints.py
+```
+
+**입력**: `data/normal/`, `data/special/` 폴더의 영상 파일 (.mp4, .avi, .mov)
+
+**출력**: `processed_data/raw_keypoints/` 폴더에 .npy 파일 저장
+
+### 2단계: 데이터 전처리
+
+추출된 키포인트를 학습에 적합한 형태로 전처리합니다.
+
+```bash
+python utils/preprocess.py
+```
+
+**전처리 과정**:
+- 사람 등장 구간 추출 (visibility > 0.3)
+- 400 프레임으로 리샘플링
+- 데이터 증강 (4배)
+- Train/Val 분할 (8:2)
+
+**출력**: `processed_data/preprocessed/` 폴더에 X_train.npy, X_val.npy, y_train.npy, y_val.npy 저장
+
+### 3단계: 모델 학습
+
+LSTM 모델을 학습합니다.
+
+```bash
+python utils/train.py
+```
+
+**학습 설정**:
+- Batch Size: 8
+- Epochs: 80 (Early Stopping: 20)
+- Learning Rate: 0.001
+- Optimizer: Adam
+
+**출력**: `models/` 폴더에 best_model.pt, final_model.pt 저장
+
+### 4단계: 추론
+
+학습된 모델로 새로운 영상을 분석합니다.
+
+```bash
+python predict.py --video path/to/video.mp4
+```
+
+## 모델 구조
+
+### LSTM 보행 분류 모델
+
+| Layer | 설명 |
+|-------|------|
+| Input | (400, 132) - 400프레임 × 33키포인트 × 4값 |
+| LSTM | hidden_size=64, num_layers=2, dropout=0.5 |
+| FC1 | 64 → 32, ReLU |
+| FC2 | 32 → 1, Sigmoid |
+
+### 규칙 기반 낙상 감지 알고리즘
+
+1. **1단계**: 급격한 하강 감지 (임계값: 0.03)
+2. **2단계**: 큰 높이 변화 확인 (임계값: 0.15)
+3. **3단계**: 최종 자세 검증 (5가지 조건 중 2개 이상 충족)
+
+## 데이터셋
+
+- **출처**: [Mendeley Data](https://data.mendeley.com/datasets/44pfnysy89/1)
+- **구성**: 정상 보행 + 비정상 보행 (관절염, 파킨슨병)
+- **총 개수**: 약 155개 영상
+
+## 라이선스
+
+This project is licensed under the MIT License.
+
+## 참고문헌
+
+- [Mendeley Gait Dataset](https://data.mendeley.com/datasets/44pfnysy89/1)
+- [IEEE Rule-based Fall Detection](https://ieeexplore.ieee.org/document/10543522)
+- [MediaPipe Pose](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker)
